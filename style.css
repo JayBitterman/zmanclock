@@ -1,0 +1,129 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    margin: 0;
+    background-color: #282c34;
+}
+
+
+.clock {
+    width: 60vmin;
+    height: 60vmin;
+    position: relative;
+    margin: auto;
+}
+
+.clock-face {
+    z-index: 4;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    /* background-color: #1a1e24; */
+    border: 4px solid #3a3f4b;
+}
+
+#sun {
+    /* background-color: #dcd92a; */
+    z-index: 5;
+    background: #edf037;
+    border-radius: 50%;
+    opacity: 0.7;
+    position: absolute;
+}
+
+#moon {
+    /* background-color: #dcd92a; */
+    z-index: 6;
+    border-radius: 50%;
+    border-radius: 50%;
+    opacity: 0.7;
+    position: absolute;
+    display: flex; 
+    align-items: center; 
+}
+
+.hand {
+    width: 50%;
+    background-color: white;
+    position: absolute;
+    top: 50%;
+    right: 50%;
+    transform-origin: 100%;
+    transform: rotate(90deg);
+    transition: all 0.05s;
+    transition-timing-function: cubic-bezier(0.4, 2.3, 0.3, 1);
+}
+
+.single-hand {
+    z-index: 9;
+    height: 4px;
+    background-color: #4b86c5;
+}
+
+.clock-number {
+    z-index: 10;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    transform-origin: center;
+    width: auto;
+    height: auto;
+    font-size: 3.8vmin;
+}
+
+.sun-time {
+    z-index: 10;
+    position: absolute;
+    color: white;
+    text-align: center;
+    font-size: 2.5vmin;
+}
+
+#sun-times {
+    display: inline-block;
+}
+
+#digital-times {
+    z-index: 10;
+    position: fixed;
+    top: 0;
+    right: 0;
+    padding: 1rem;
+}
+
+#digital-time, #seasonal-time, #day-of-week{
+    color: white;
+    font-size: 5vmin;
+    text-align: right;
+}
+
+#date, #holiday, #sedra, #omer {
+    color: white;
+    font-size: 5vmin;
+    text-align: left;
+}
+
+#sedra{
+    color: white;
+    font-size: 5vmin;
+    text-align: left;
+    z-index: 10;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    padding: 1rem;
+}
+
+#week-info {
+    z-index: 10;
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding: 1rem;
+}
