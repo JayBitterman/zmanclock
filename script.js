@@ -177,7 +177,7 @@ function calcSunTimes(latitude, longitude) {
     'צאת': tzeis.date,
     'חצות היום': midday,
     "ר' תם": rTam,
-    'פלג המנחה1': addTime(sunrise.date, 10.75 * dayHourMs),
+    'פלג המנחה': addTime(sunrise.date, 10.75 * dayHourMs),
     'מנחה קטנה': addTime(sunrise.date, 9.5 * dayHourMs),
     'מנחה גדולה': addTime(midday, Math.max(0.5 * 60 * 60 * 1000, dayHourMs / 2)), // Ensure at least 30 minutes after midday
     'שמע גר"א': addTime(sunrise.date, 3 * dayHourMs),
