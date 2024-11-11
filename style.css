@@ -10,8 +10,8 @@ body {
 
 
 .clock {
-    width: 60vmin;
-    height: 60vmin;
+    width: 55vmin;
+    height: 55vmin;
     position: relative;
     margin: auto;
 }
