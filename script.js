@@ -173,7 +173,7 @@ function calcSunTimes(latitude, longitude) {
     'sunrise': sunrise.date,
     'sunset': sunset.date,
     'עלות': dawn.date,
-    'ציצית ותפילין': mshyaker.date,
+    'ציצית': mshyaker.date,
     'צאת': tzeis.date,
     'חצות היום': midday,
     "ר' תם": rTam,
@@ -226,7 +226,7 @@ function placeSunTimes(sunTimes) {
     sunTimeElement.style.alignItems = "center";
 
     if (name !== "sunset" && name !== "sunrise") {
-        if (name == "צאת" || name == "ר' תם" || name == "עלות" || name == "ציצית ותפילין" || name == "🕯️🕯️"){
+        if (name == "צאת" || name == "ר' תם" || name == "עלות" || name == "ציצית" || name == "🕯️🕯️"){
             sunTimeElement.textContent = time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }) + " " + name;
             sunTimeElement.style.whiteSpace = "nowrap";
         }
@@ -764,7 +764,7 @@ function updateClock() {
  * Initializes the clock and sets up intervals for updates.
  */
 function init() {
-  setInterval(getLocation, 1000);
+  getLocation();
   setInterval(updateClock, 1000);
   positionClockNumbers();
 }
