@@ -610,6 +610,9 @@ function setClockHand(sunTimes) {
  * @returns {boolean} - True if in Israel, false otherwise
  */
 function inIsrael(lat, lon) {
+  if (!israelGeoJSON) {
+    return false; // default behavior
+  }
   const pt = point([lon, lat]); // Note: GeoJSON uses [longitude, latitude]
   const polygon = israelGeoJSON.features[0];
   return booleanPointInPolygon(pt, polygon);
