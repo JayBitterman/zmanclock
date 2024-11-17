@@ -103,21 +103,10 @@ body {
     text-align: right;
 }
 
-#date, #holiday, #sedra, #omer {
+#date, #holiday, #omer {
     color: white;
     font-size: 5vmin;
     text-align: left;
-}
-
-#sedra{
-    color: white;
-    font-size: 5vmin;
-    text-align: left;
-    z-index: 10;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    padding: 1rem;
 }
 
 #week-info {
@@ -126,4 +115,66 @@ body {
     top: 0;
     left: 0;
     padding: 1rem;
+}
+
+.day-navigator {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem 1rem;
+}
+
+.nav-buttons {
+    position: absolute;
+    display: flex;
+    gap: 1vmin;
+    bottom: 9vh;
+    right: 2vw;
+}
+
+.nav-button {
+    width: 5vmin;
+    height: 5vmin;
+    border: none;
+    background-color: #476789;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3vmin;
+    transition: background-color 0.2s;
+    border-radius: 30%;
+}
+
+.nav-button:hover {
+    background-color: #0056b3;
+}
+
+.reset-button {
+    position: absolute;
+    width: 5vmin;
+    height: 5vmin;
+    padding: 1vmin 1vmin;
+    border: none;
+    background-color: #476789;
+    color: white;
+    cursor: pointer;
+    font-size: 3vmin;
+    display: none;
+    transition: background-color 0.2s;
+    bottom: 2vh;
+    right: 4vw;
+    border-radius: 30%;
+}
+
+.reset-button:hover {
+    background-color: #0056b3;
+}
+
+.reset-button.visible {
+    display: block;
 }
