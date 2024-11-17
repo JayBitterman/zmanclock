@@ -70,6 +70,35 @@ function p(a){
     console.log(a);
 }
 
+// Add event listeners to change the day
+document.getElementById('yesterday').addEventListener('click', () => changeDay(-1));
+document.getElementById('tomorrow').addEventListener('click', () => changeDay(1));
+document.getElementById('reset').addEventListener('click', () => changeDay(0));
+
+// Also call update clock for responsiveness
+document.getElementById('yesterday').addEventListener('click', () => updateClock());
+document.getElementById('tomorrow').addEventListener('click', () => updateClock());
+document.getElementById('reset').addEventListener('click', () => updateClock());
+
+function changeDay(direction) {
+  if(direction == 0){
+    days_ahead = 0;
+  }
+  else{
+    days_ahead += direction;
+  }
+  updateResetButton();
+}
+
+function updateResetButton() {
+  const resetButton = document.getElementById('reset');
+  if (days_ahead !== 0) {
+      resetButton.classList.add('visible');
+  } else {
+      resetButton.classList.remove('visible');
+  }
+}
+
 /**
  * Get the user's current geolocation.
  */
@@ -82,7 +111,27 @@ function getLocation() {
         usr_lon = position.coords.longitude;
         updateClock(); // Call updateClock after location is retrieved
       },
-      null,
+      // Error function
+      function handleError(error) {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            // User denied the request for Geolocation.
+            alert("Please enable location services in your browser settings and then refresh the page.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            // Location information is unavailable.
+            alert("Location information is unavailable.");
+            break;
+          case error.TIMEOUT:
+            // The request to get user location timed out.
+            alert("The request to get user location timed out.");
+            break;
+          case error.UNKNOWN_ERROR:
+            // An unknown error occurred.
+            alert("An unknown error occurred.");
+            break;
+        }
+      },
       // Options
       {
         enableHighAccuracy: true,
@@ -90,6 +139,10 @@ function getLocation() {
         maximumAge: 0
       }
     );
+  }
+  else {
+    // Geolocation is not supported
+    alert("Geolocation is not supported by this browser.");
   }
 }
 
@@ -299,25 +352,46 @@ function placeSunTimes(sunTimes) {
 
 /**
  * Positions the moon on the clock face based on its current phase and position.
- * @param {object} sunTimes - An object containing calculated sun times
  */
-function positionMoon(sunTimes) {
-  const clockFace = document.querySelector('.clock-face');
-  const clockRadius = clockFace.offsetWidth / 2;
+function positionMoon() {
   const moonHolder = document.getElementById('moon');
 
   // Create an observer object
   const observer = new Astronomy.Observer(usr_lat, usr_lon, elevation);
 
   // Calculate moonrise, moonset, and next moonrise
-  const nextMoonrise = Astronomy.SearchRiseSet('Moon', observer, 1, date, 2);
-  const nextMoonset = Astronomy.SearchRiseSet('Moon', observer, -1, date, 2);
-  const prevMoonrise = Astronomy.SearchRiseSet('Moon', observer, 1, date, -2);
-  const prevMoonset = Astronomy.SearchRiseSet('Moon', observer, -1, date, -2);
+  const nextMoonrise = Astronomy.SearchRiseSet('Moon', observer, rising, date, 2);
+  const nextMoonset = Astronomy.SearchRiseSet('Moon', observer, setting, date, 2);
+  const prevMoonrise = Astronomy.SearchRiseSet('Moon', observer, rising, date, -2);
+  const prevMoonset = Astronomy.SearchRiseSet('Moon', observer, setting, date, -2);
 
   // Calculate the moon's position
+  // Calculate parallactic angle
+  // This is the angle between the zenith direction and the celestial pole
   const moonEqPosition = Astronomy.Equator('Moon', date, observer, true, true);
   const moonPosition = Astronomy.Horizon(date, observer, moonEqPosition.ra, moonEqPosition.dec);
+  const lst = Astronomy.SiderealTime(date);
+  const hourAngle = (lst - moonEqPosition.ra) * 15; // Convert to degrees
+
+  // Calculate parallactic angle using the formula:
+  // tan(q) = sin(H) / (tan(φ)cos(δ) - sin(δ)cos(H))
+  // where H is hour angle, φ is latitude, δ is declination
+  const latRad = usr_lat * Math.PI / 180;
+  const decRad = moonEqPosition.dec * Math.PI / 180;
+  const haRad = hourAngle * Math.PI / 180;
+
+  let parallacticAngle = Math.atan2(Math.sin(haRad), Math.tan(latRad) * Math.cos(decRad) - Math.sin(decRad) * Math.cos(haRad)) * 180 / Math.PI;
+
+  // Add hemisphere-based rotation
+  // Northern hemisphere sees the moon "right side up", southern hemisphere "upside down"
+  const hemisphereRotation = -usr_lat * 0.5; // Simple linear approximation
+  
+  // Combine rotations
+  const totalRotation = parallacticAngle + hemisphereRotation;
+
+  // Rotate the moon
+  moonHolder.style.transform = `translate(-50%, -50%) rotate(${totalRotation}deg)`;
+
   const moonAltitude = moonPosition.altitude;
 
   // Determine the progress angle
@@ -369,7 +443,6 @@ function renderMoon(holderNode, rVal, gVal, bVal, R, phase, waning) {
   // 'phase' ranges from 0 (new moon) to 1 (full moon)
   // 'waning' is a boolean indicating if the moon is waning
 
-  const moon = document.getElementById('moon');
   const sphere = document.createElement("div");
   sphere.style.zIndex = "7";
   const hemiSphere = document.createElement("div");
@@ -400,7 +473,7 @@ function renderMoon(holderNode, rVal, gVal, bVal, R, phase, waning) {
       hemiTxt += `border-bottom-left-radius:${hw}vmin ${R}vmin; `;
       hemiTxt += `border-top-right-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-right-radius:${R}vmin ${R}vmin; `;
-      moon.style.transform = `translate(-50%, -50%) rotate(${180 - sunTheta}deg)`;
+      // moon.style.transform = `translate(-50%, -50%) rotate(${180 - sunTheta + (sunTheta + 90) * 2}deg)`;
     } else {
       // Waxing crescent (illumination on the right)
       hemiTxt += "position:absolute; left:0; ";
@@ -409,7 +482,7 @@ function renderMoon(holderNode, rVal, gVal, bVal, R, phase, waning) {
       hemiTxt += `border-bottom-left-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-top-right-radius:${hw}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-right-radius:${hw}vmin ${R}vmin; `;
-      moon.style.transform = `translate(-50%, -50%) rotate(${-sunTheta}deg)`;
+      // moon.style.transform = `translate(-50%, -50%) rotate(${-sunTheta + (sunTheta + 90) * 2}deg)`;
     }
 
     hemiTxt += `background-color:${darkColor}; `;
@@ -425,7 +498,7 @@ function renderMoon(holderNode, rVal, gVal, bVal, R, phase, waning) {
       hemiTxt += `border-bottom-left-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-top-right-radius:${-hw}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-right-radius:${-hw}vmin ${R}vmin; `;
-      moon.style.transform = `translate(-50%, -50%) rotate(${180 - sunTheta}deg)`;
+      // moon.style.transform = `translate(-50%, -50%) rotate(${180 - sunTheta + (sunTheta + 90) * 2}deg)`;
     } else {
       // Waxing gibbous (shadow on the left)
       hemiTxt += "position:absolute; right:0; ";
@@ -434,7 +507,7 @@ function renderMoon(holderNode, rVal, gVal, bVal, R, phase, waning) {
       hemiTxt += `border-bottom-left-radius:${-hw}vmin ${R}vmin; `;
       hemiTxt += `border-top-right-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-right-radius:${R}vmin ${R}vmin; `;
-      moon.style.transform = `translate(-50%, -50%) rotate(${-sunTheta}deg)`;
+      // moon.style.transform = `translate(-50%, -50%) rotate(${-sunTheta + (sunTheta + 90) * 2}deg)`;
     }
 
     hemiTxt += `background-color:${brightColor}; `;
@@ -623,18 +696,16 @@ function inIsrael(lat, lon) {
  * @param {object} sunTimes - An object containing calculated sun times
  */
 function setDate(sunTimes) {
+  const hdateFormatted = hdate.greg().toLocaleDateString('en-US');
+  const dateFormatted = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   let chag = 0;
   const tomorrow = new Date(date);
   tomorrow.setDate(date.getDate() + 1);
-
-  const tomTomorrow = new Date(tomorrow);
-  tomorrow.setDate(tomorrow.getDate() + 1);
 
   const dateHolder = document.getElementById("date");
   const dowHolder = document.getElementById("day-of-week");
   const holidayHolder = document.getElementById("holiday");
   const omerHolder = document.getElementById("omer");
-  const sedraHolder = document.getElementById("sedra");
 
   let dateString;
   const dow = weekday[date.getDay()];
@@ -672,14 +743,14 @@ function setDate(sunTimes) {
       }
 
       // tomorrow is yom tov
-      if(e.getFlags() & (hcal.flags.CHAG)){
+      if(e.getFlags() & (hcal.flags.CHAG) && hdateFormatted == dateFormatted){
         chag = 1;
         sunTimes["🕯️🕯️"] = new Date(sunTimes["sunset"] - 18 * 60000);
       }
     }
   }
 
-  if(dowHolder.textContent == "יום שישי"){
+  if(dowHolder.textContent == "יום שישי" && hdateFormatted == dateFormatted){
     sunTimes["🕯️🕯️"] = new Date(sunTimes["sunset"] - 18 * 60000);
   }
   else if("🕯️🕯️" in sunTimes && chag == 0){
@@ -692,9 +763,10 @@ function setDate(sunTimes) {
   if (hdate.mm == 1 && hdate.dd >= 16 || hdate.mm == 2 || hdate.mm == 3 && hdate.dd < 6) {
     omerHolder.textContent = new hcal.OmerEvent(hdate, omerDay[(hdate.mm * 100 + hdate.dd)]).render('he').replace(/[\u0591-\u05C7]/g, '');
   }
+  else{
+    omerHolder.textContent = "";
+  }
 
-  // Set this week's parsha sedra
-  sedraHolder.textContent = new hcal.Sedra(hdate.getFullYear(), inIsrael(usr_lat, usr_lon)).getString(hdate, 'he').replace(/[\u0591-\u05C7]/g, '');
   holidayHolder.innerHTML = "";
   // Check if there is a Holiday Today
   if (events) {
@@ -749,6 +821,10 @@ function setDate(sunTimes) {
       holidayHolder.appendChild(holidayInstance);
     }
   }
+  // set this week's sedra
+  const sedraInstance = document.createElement('div');
+  sedraInstance.textContent = new hcal.Sedra(hdate.getFullYear(), inIsrael(usr_lat, usr_lon)).getString(hdate, 'he').replace(/[\u0591-\u05C7]/g, '');
+  holidayHolder.appendChild(sedraInstance);
 }
 
 /**
@@ -758,7 +834,7 @@ function updateClock() {
   const sunTimes = calcSunTimes(usr_lat, usr_lon);
   setClockHand(sunTimes);
   setDigitalTimes(sunTimes);
-  positionMoon(sunTimes);
+  positionMoon();
   setDate(sunTimes);
   placeSunTimes(sunTimes);
 }
