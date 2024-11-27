@@ -33,6 +33,12 @@ const weekday = {0: "יום ראשון", 1: "יום שני", 2: "יום שליש
 const rising = 1;
 const setting = -1;
 
+const dayButtons = [
+  { id: 'yesterday', change: -1 },
+  { id: 'tomorrow', change: 1 },
+  { id: 'reset', change: 0 }
+];
+
 // User's latitude and longitude
 let usr_lat;
 let usr_lon;
@@ -46,12 +52,21 @@ let days_ahead = 0;
 // Angle of the sun hand
 let sunTheta;
 
+// Store sunTimes
+let sunTimes;
+
 // Global variables for date and hdate
 let date;     // Global date variable
 let hdate;    // Global Hebrew date variable
 
 // Variable to hold GeoJSON data for Israel
 let israelGeoJSON;
+
+// Control clock speed
+let offset = 0; // Tracks the offset from the current time (for speeding up)
+let daysAhead = 0; // Tracks how many days ahead the user wants to see
+let speedMultiplier = 0; // Speed level: 0 = normal, 1 = speed up, 2 = even faster
+let intervalId = null; // Tracks the interval ID
 
 /**
  * Asynchronously load the GeoJSON data for Israel.
@@ -70,15 +85,17 @@ function p(a){
     console.log(a);
 }
 
-// Add event listeners to change the day
-document.getElementById('yesterday').addEventListener('click', () => changeDay(-1));
-document.getElementById('tomorrow').addEventListener('click', () => changeDay(1));
-document.getElementById('reset').addEventListener('click', () => changeDay(0));
 
-// Also call update clock for responsiveness
-document.getElementById('yesterday').addEventListener('click', () => updateClock());
-document.getElementById('tomorrow').addEventListener('click', () => updateClock());
-document.getElementById('reset').addEventListener('click', () => updateClock());
+
+dayButtons.forEach(button => {
+  const btnElement = document.getElementById(button.id);
+
+  btnElement.addEventListener('click', () => {
+      changeDay(button.change); // Change the day
+      document.getElementById("sun-times").innerHTML = ''; // Clear previous day's sun-times
+      updateClock();           // Update the clock
+  });
+});
 
 function changeDay(direction) {
   if(direction == 0){
@@ -99,6 +116,36 @@ function updateResetButton() {
   }
 }
 
+// Add event listener to the speed button
+document.getElementById('speed').addEventListener('click', handleSpeedButtonClick);
+
+// Function to handle speed button clicks
+function handleSpeedButtonClick() {
+  if (speedMultiplier === 0) {
+      // First click: Start speeding up (base speed)
+      speedMultiplier = 10;
+      clearInterval(intervalId); // Clear any previous interval
+      intervalId = setInterval(() => {
+          offset += 1000 * speedMultiplier; // Add to offset
+          // updateClock();
+      }, 10); // Update every 10ms
+  } else if (speedMultiplier === 10) {
+      // Second click: Increase speed
+      speedMultiplier = 100; // Increase speed multiplier
+      clearInterval(intervalId);
+      intervalId = setInterval(() => {
+          offset += 1000 * speedMultiplier; // Add more to offset
+          // updateClock();
+      }, 10);
+  } else {
+      // Third click: Reset to current time
+      speedMultiplier = 0;
+      clearInterval(intervalId);
+      offset = 0; // Reset offset
+      updateClock();
+  }
+}
+
 /**
  * Get the user's current geolocation.
  */
@@ -110,6 +157,7 @@ function getLocation() {
         usr_lat = position.coords.latitude;
         usr_lon = position.coords.longitude;
         updateClock(); // Call updateClock after location is retrieved
+        setInterval(updateClock, 10);
       },
       // Error function
       function handleError(error) {
@@ -160,8 +208,8 @@ function calcSunTimes(latitude, longitude) {
   const observer = new Astronomy.Observer(latitude, longitude, elevation);
 
   // Get the date for the calculation
-  date = new Date();
-  date.setDate(date.getDate() + days_ahead);
+  const actualDate = new Date();
+  date = new Date(actualDate.getTime() + offset + days_ahead * 24 * 60 * 60 * 1000);
   const todayDate = new Date(date);
   todayDate.setHours(0, 0, 0, 0); // Set to midnight of the date
 
@@ -222,7 +270,7 @@ function calcSunTimes(latitude, longitude) {
   }
 
   // Store calculated times in an object
-  const sunTimes = {
+  sunTimes = {
     'sunrise': sunrise.date,
     'sunset': sunset.date,
     'עלות': dawn.date,
@@ -240,15 +288,31 @@ function calcSunTimes(latitude, longitude) {
     'prevSunset': prevSunset.date,
     'nextSunrise': nextSunrise.date
   };
-
-  return sunTimes;
 }
 
 /**
  * Places the sun times on the clock face.
- * @param {object} sunTimes - An object containing calculated sun times
  */
-function placeSunTimes(sunTimes) {
+function placeSunTimes() {
+  // Helper function to update times
+  function timeChange(element, newTime){
+    // retrive element time
+    const elementTime = new Date(parseInt(element.getAttribute("time"), 10));
+    if(elementTime - newTime != 0){
+      return true;
+    }
+    if(element.style.color == 'grey' && date < elementTime){
+      return true;
+    }
+    if(element.style.color == 'yellow' && !(elementTime > date && elementTime - date < 600000)){
+      return true;
+    }
+    if(element.style.color == 'white' && date > elementTime - 600000){
+      return true;
+    }
+  
+    return false;
+  }
   const clockFace = document.querySelector('.clock-face');
   const clockRadius = (clockFace.offsetWidth) / 2;
   const sunTimesContainer = document.getElementById("sun-times");
@@ -259,24 +323,26 @@ function placeSunTimes(sunTimes) {
   const tomorrowSunrise = sunTimes.nextSunrise;
   const yesterdaySunset = sunTimes.prevSunset;
 
-  // Clear previous sun times
-  sunTimesContainer.innerHTML = '';
-
   for (const [name, time] of Object.entries(sunTimes)) {
+    // These times are not for display
     if (name == "prevSunset" || name == "nextSunrise") {
       continue;
     }
-    if (!(time instanceof Date) || isNaN(time.getTime())) {
-      console.warn(`Invalid time for ${name}: ${time}`);
+
+    if(document.getElementById(name) && !timeChange(document.getElementById(name), time)){
       continue;
     }
-
+    else if(document.getElementById(name)){
+      document.getElementById(name).remove();
+    }
+    
     // Create sun time element
     const sunTimeElement = document.createElement('div');
     sunTimeElement.setAttribute("id", name);
     sunTimeElement.classList.add('sun-time');    
     sunTimeElement.style.display = "grid";    
     sunTimeElement.style.alignItems = "center";
+    sunTimeElement.setAttribute("time", time.getTime());
 
     if (name !== "sunset" && name !== "sunrise") {
         if (name == "צאת" || name == "ר' תם" || name == "עלות" || name == "ציצית" || name == "🕯️🕯️"){
@@ -287,7 +353,7 @@ function placeSunTimes(sunTimes) {
             const nameElement = document.createElement('div');
             nameElement.style.whiteSpace = "nowrap";
             nameElement.textContent = name;
-            sunTimeElement.appendChild(nameElement);
+            sunTimeElement.appendChild(nameElement);          
 
             const timeElement = document.createElement('div');
             timeElement.style.whiteSpace = "nowrap";
@@ -339,9 +405,9 @@ function placeSunTimes(sunTimes) {
     // Color coding based on time
     let color;
     if (time < date) {
-      color = '#888888'; // Grey for passed times
+      color = 'grey'; // Grey for passed times
     } else if (time - date < 600000) { // 10 minutes in milliseconds
-      color = '#FFFF00'; // Yellow for upcoming times
+      color = 'yellow'; // Yellow for upcoming times
     } else {
       color = 'white'; // Default color
     }
@@ -360,16 +426,15 @@ function positionMoon() {
   const observer = new Astronomy.Observer(usr_lat, usr_lon, elevation);
 
   // Calculate moonrise, moonset, and next moonrise
-  const nextMoonrise = Astronomy.SearchRiseSet('Moon', observer, rising, date, 2);
-  const nextMoonset = Astronomy.SearchRiseSet('Moon', observer, setting, date, 2);
-  const prevMoonrise = Astronomy.SearchRiseSet('Moon', observer, rising, date, -2);
-  const prevMoonset = Astronomy.SearchRiseSet('Moon', observer, setting, date, -2);
+  let nextMoonrise = Astronomy.SearchRiseSet('Moon', observer, rising, date, 365);
+  let nextMoonset = Astronomy.SearchRiseSet('Moon', observer, setting, date, 365);
+  let prevMoonrise = Astronomy.SearchRiseSet('Moon', observer, rising, date, -365);
+  let prevMoonset = Astronomy.SearchRiseSet('Moon', observer, setting, date, -365);
 
   // Calculate the moon's position
   // Calculate parallactic angle
   // This is the angle between the zenith direction and the celestial pole
   const moonEqPosition = Astronomy.Equator('Moon', date, observer, true, true);
-  const moonPosition = Astronomy.Horizon(date, observer, moonEqPosition.ra, moonEqPosition.dec);
   const lst = Astronomy.SiderealTime(date);
   const hourAngle = (lst - moonEqPosition.ra) * 15; // Convert to degrees
 
@@ -392,17 +457,17 @@ function positionMoon() {
   // Rotate the moon
   moonHolder.style.transform = `translate(-50%, -50%) rotate(${totalRotation}deg)`;
 
-  const moonAltitude = moonPosition.altitude;
-
   // Determine the progress angle
   let progressAngle;
-  if (moonAltitude > 0) {
+  if (nextMoonset.date < nextMoonrise.date) {
     // Moon is above horizon
     progressAngle = 180 * (date - prevMoonrise.date) / (nextMoonset.date - prevMoonrise.date);
-  } else if (moonAltitude < 0) {
+  } else if (nextMoonset.date > nextMoonrise.date) {
     progressAngle = 180 + 180 * (date - prevMoonset.date) / (nextMoonrise.date - prevMoonset.date);
   }
   progressAngle %= 360;
+
+
 
   // Position the moon
   const x = Math.cos(progressAngle * Math.PI / 180);
@@ -559,9 +624,8 @@ function positionClockNumbers() {
 
 /**
  * Sets the digital times (standard and seasonal) displayed on the clock.
- * @param {object} sunTimes - An object containing calculated sun times
  */
-function setDigitalTimes(sunTimes) {
+function setDigitalTimes() {
   const digitalTimeHolder = document.getElementById("digital-time");
   const sDigitalTimeHolder = document.getElementById("seasonal-time");
 
@@ -588,7 +652,7 @@ function setDigitalTimes(sunTimes) {
   digitalTimeHolder.textContent = currentTime;
 
   // Now calculate seasonal digital time
-  const { isDay, totalSeasonalMinutes, seasonalHourLength } = calculateSeasonalTime(date, sunTimes);
+  const { isDay, totalSeasonalMinutes, seasonalHourLength } = calculateSeasonalTime(date);
 
   const seasonalHour = Math.floor(totalSeasonalMinutes / 60);
   const seasonalMinute = Math.floor(totalSeasonalMinutes % 60);
@@ -606,31 +670,28 @@ function setDigitalTimes(sunTimes) {
 
 /**
  * Calculates the seasonal time (sha'ah zemanit) based on sunrise and sunset.
- * @param {Date} now - The current date and time
- * @param {object} sunTimes - An object containing calculated sun times
  * @returns {object} - An object containing isDay, seasonalHours, totalSeasonalMinutes, and seasonalHourLength
  */
-function calculateSeasonalTime(now, sunTimes) {
-  const { sunrise, sunset, nextSunrise, prevSunset } = sunTimes;
+function calculateSeasonalTime() {
   let isDay, seasonalHourLength, seasonalHours, totalSeasonalMinutes;
 
-  if (now >= sunrise && now < sunset) {
+  if (date >= sunTimes['sunrise'] && date < sunTimes['sunset']) {
     // Daytime
     isDay = true;
-    const dayLength = sunset.getTime() - sunrise.getTime();
+    const dayLength = sunTimes['sunset'].getTime() - sunTimes['sunrise'].getTime();
     seasonalHourLength = dayLength / 12;
-    const timeFromSunrise = now.getTime() - sunrise.getTime();
+    const timeFromSunrise = date.getTime() - sunTimes['sunrise'].getTime();
     seasonalHours = timeFromSunrise / seasonalHourLength;
   } else {
     // Nighttime
     isDay = false;
     let nightLength, timeFromSunset;
-    if (now >= sunset) {
-      nightLength = nextSunrise.getTime() - sunset.getTime();
-      timeFromSunset = now.getTime() - sunset.getTime();
+    if (date >= sunTimes['sunset']) {
+      nightLength = sunTimes['nextSunrise'].getTime() - sunTimes['sunset'].getTime();
+      timeFromSunset = date.getTime() - sunTimes['sunset'].getTime();
     } else {
-      nightLength = sunrise.getTime() - prevSunset.getTime();
-      timeFromSunset = (now.getTime() - prevSunset.getTime() + nightLength) % nightLength;
+      nightLength = sunTimes['sunrise'].getTime() - sunTimes['prevSunset'].getTime();
+      timeFromSunset = (date.getTime() - sunTimes['prevSunset'].getTime() + nightLength) % nightLength;
     }
     seasonalHourLength = nightLength / 12;
     seasonalHours = timeFromSunset / seasonalHourLength;
@@ -640,19 +701,44 @@ function calculateSeasonalTime(now, sunTimes) {
   return { isDay, seasonalHours, totalSeasonalMinutes, seasonalHourLength };
 }
 
+let accumulatedRotation = 0;
+let prevTotalDegrees = null;
 /**
  * Sets the position of the clock hand and the sun element.
- * @param {object} sunTimes - An object containing calculated sun times
  */
-function setClockHand(sunTimes) {
-  const { isDay, seasonalHours } = calculateSeasonalTime(date, sunTimes);
+function setClockHand() {
+  const { isDay, seasonalHours } = calculateSeasonalTime();
 
-  let totalDegrees = isDay ? (seasonalHours / 12) * 180 : 180 + (seasonalHours / 12) * 180;
+  let totalDegrees = isDay
+    ? (seasonalHours / 12) * 180
+    : 180 + (seasonalHours / 12) * 180;
 
   // Adjust for the clock's orientation
   totalDegrees = (360 - totalDegrees + 180) % 360;
   sunTheta = 180 - totalDegrees;
 
+  // Ensure smooth rotation by adjusting for wrap-around
+  if (prevTotalDegrees !== null) {
+    let deltaDegrees = totalDegrees - prevTotalDegrees;
+
+    // Adjust for crossing the 0/360-degree boundary
+    if (deltaDegrees > 180) {
+      deltaDegrees -= 360;
+    } else if (deltaDegrees < -180) {
+      deltaDegrees += 360;
+    }
+
+    accumulatedRotation += deltaDegrees;
+  } else {
+    accumulatedRotation = totalDegrees;
+  }
+
+  prevTotalDegrees = totalDegrees;
+
+  // Rotate the hand using the accumulated rotation
+  singleHand.style.transform = `rotate(${accumulatedRotation}deg)`;
+
+  // Position the sun element as before
   const clockFace = document.querySelector('.clock-face');
   const clockRadius = clockFace.offsetWidth / 2;
   const sunElement = document.getElementById('sun');
@@ -666,14 +752,13 @@ function setClockHand(sunTimes) {
   sunElement.style.width = `${size}vmin`;
   sunElement.style.height = `${size}vmin`;
 
-  const left = 50 + x * scale * 50 - 50 * sunElement.offsetWidth / (2 * clockRadius);
-  const top = 50 - y * scale * 50 - 50 * sunElement.offsetHeight / (2 * clockRadius);
+  const left =
+    50 + x * scale * 50 - (50 * sunElement.offsetWidth) / (2 * clockRadius);
+  const top =
+    50 - y * scale * 50 - (50 * sunElement.offsetHeight) / (2 * clockRadius);
 
   sunElement.style.left = `${left}%`;
   sunElement.style.top = `${top}%`;
-
-  // Rotate the hand
-  singleHand.style.transform = `rotate(${totalDegrees}deg)`;
 }
 
 /**
@@ -693,9 +778,8 @@ function inIsrael(lat, lon) {
 
 /**
  * Sets the date, day of week, and holidays on the clock.
- * @param {object} sunTimes - An object containing calculated sun times
  */
-function setDate(sunTimes) {
+function setDate() {
   const hdateFormatted = hdate.greg().toLocaleDateString('en-US');
   const dateFormatted = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   let chag = 0;
@@ -753,8 +837,8 @@ function setDate(sunTimes) {
   if(dowHolder.textContent == "יום שישי" && hdateFormatted == dateFormatted){
     sunTimes["🕯️🕯️"] = new Date(sunTimes["sunset"] - 18 * 60000);
   }
-  else if("🕯️🕯️" in sunTimes && chag == 0){
-    delete sunTimes["🕯️🕯️"];
+  else if(document.getElementById('🕯️🕯️') && chag == 0){
+    document.getElementById('🕯️🕯️').remove();
   }
 
   dateHolder.textContent = dateString.day + " " + dateString.monthName + " " + dateString.year;
@@ -831,12 +915,12 @@ function setDate(sunTimes) {
  * Updates the clock by refreshing all dynamic elements.
  */
 function updateClock() {
-  const sunTimes = calcSunTimes(usr_lat, usr_lon);
-  setClockHand(sunTimes);
-  setDigitalTimes(sunTimes);
+  calcSunTimes(usr_lat, usr_lon);
+  setClockHand();   
+  setDigitalTimes();
   positionMoon();
-  setDate(sunTimes);
-  placeSunTimes(sunTimes);
+  setDate();
+  placeSunTimes();
 }
 
 /**
@@ -844,7 +928,6 @@ function updateClock() {
  */
 function init() {
   getLocation();
-  setInterval(updateClock, 1000);
   positionClockNumbers();
 }
 
