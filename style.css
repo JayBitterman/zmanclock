@@ -8,7 +8,6 @@ body {
     background-color: #282c34;
 }
 
-
 .clock {
     width: 50vmin;
     height: 50vmin;
@@ -122,22 +121,26 @@ body {
     bottom: 0;
     right: 0;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    padding: 1rem 1rem;
+    padding: 5vmin 2vmin;
+    gap: 2vmin;
 }
 
-.nav-buttons {
-    position: absolute;
+.reset-navigator {
+    position: fixed;
+    bottom: 0;
+    left: 0;
     display: flex;
-    gap: 1vmin;
-    bottom: 9vh;
-    right: 2vw;
+    flex-direction: row;
+    align-items: center;
+    padding: 5vmin 2vmin;
+    gap: 2vmin;
 }
 
 .nav-button {
-    width: 5vmin;
-    height: 5vmin;
+    width: 15vmin;
+    height: 15vmin;
     border: none;
     background-color: #476789;
     color: white;
@@ -145,36 +148,57 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 3vmin;
+    font-size: 8vmin; /* Adjusted to fit within the button */
     transition: background-color 0.2s;
-    border-radius: 30%;
+    border-radius: 50%; /* Optional: Makes buttons circular */
+
+    /* Mobile-specific fix */
+    -webkit-tap-highlight-color: transparent; /* Disable tap highlight */
+    -webkit-touch-callout: none; /* Prevent context menu on long press */
+    user-select: none; /* Disable text selection */
 }
 
-.nav-button:hover {
+.nav-button:active {
+    outline: none; /* Prevent outline on tap */
+    box-shadow: 0 0 0 0.4vmin rgba(0, 0, 0, 0.5); /* Optional active effect */
     background-color: #0056b3;
+    border-radius: 50%; /* Keep circular shape */
+    transform: scale(0.95); /* Add a subtle "press" effect */
 }
 
 .reset-button {
-    position: absolute;
-    width: 5vmin;
-    height: 5vmin;
-    padding: 1vmin 1vmin;
+    width: 15vmin;
+    height: 15vmin;
     border: none;
     background-color: #476789;
     color: white;
     cursor: pointer;
-    font-size: 3vmin;
-    display: none;
+    font-size: 8vmin;
     transition: background-color 0.2s;
-    bottom: 2vh;
-    right: 4vw;
-    border-radius: 30%;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+
+    /* Mobile-specific fix */
+    -webkit-tap-highlight-color: transparent; /* Disable tap highlight */
+    -webkit-touch-callout: none; /* Prevent context menu on long press */
+    user-select: none; /* Disable text selection */
 }
 
-.reset-button:hover {
-    background-color: #0056b3;
+#reset {
+    display: none;
 }
 
-.reset-button.visible {
+#reset.visible {
     display: block;
+}
+
+/* Hover effect for non-mobile devices */
+@media (hover: hover) {
+    .nav-button:hover {
+        background-color: #0056b3; /* Darker blue on hover */
+    }
+    .reset-button:hover {
+        background-color: #0056b3; /* Darker blue on hover */
+    }
 }
