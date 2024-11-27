@@ -127,7 +127,7 @@ body {
     gap: 2vmin;
 }
 
-.reset-navigator {
+.speed-navigator {
     position: fixed;
     bottom: 0;
     left: 0;
@@ -138,26 +138,6 @@ body {
     gap: 2vmin;
 }
 
-.nav-button {
-    width: 15vmin;
-    height: 15vmin;
-    border: none;
-    background-color: #476789;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8vmin; /* Adjusted to fit within the button */
-    transition: background-color 0.2s;
-    border-radius: 50%; /* Optional: Makes buttons circular */
-
-    /* Mobile-specific fix */
-    -webkit-tap-highlight-color: transparent; /* Disable tap highlight */
-    -webkit-touch-callout: none; /* Prevent context menu on long press */
-    user-select: none; /* Disable text selection */
-}
-
 .nav-button:active {
     outline: none; /* Prevent outline on tap */
     box-shadow: 0 0 0 0.4vmin rgba(0, 0, 0, 0.5); /* Optional active effect */
@@ -166,31 +146,34 @@ body {
     transform: scale(0.95); /* Add a subtle "press" effect */
 }
 
-.reset-button {
-    width: 15vmin;
-    height: 15vmin;
-    border: none;
-    background-color: #476789;
-    color: white;
-    cursor: pointer;
-    font-size: 8vmin;
-    transition: background-color 0.2s;
-    border-radius: 50%;
-    align-items: center;
-    justify-content: center;
-
-    /* Mobile-specific fix */
-    -webkit-tap-highlight-color: transparent; /* Disable tap highlight */
-    -webkit-touch-callout: none; /* Prevent context menu on long press */
-    user-select: none; /* Disable text selection */
-}
-
 #reset {
     display: none;
 }
 
 #reset.visible {
     display: block;
+}
+
+.nav-button, .reset-button {
+    display: flex; /* Ensure flexbox is used */
+    border: none;
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    text-align: center; /* Additional text alignment */
+    line-height: 1; /* Normalize line height */
+    padding: 0; /* Remove any default padding */
+    width: 15vmin;
+    height: 15vmin;
+    background-color: #476789;
+    color: white;
+    cursor: pointer;
+    font-size: 8vmin;
+    transition: background-color 0.2s;
+    border-radius: 50%;
+    /* Mobile-specific fix */
+    -webkit-tap-highlight-color: transparent; /* Disable tap highlight */
+    -webkit-touch-callout: none; /* Prevent context menu on long press */
+    user-select: none; /* Disable text selection */
 }
 
 /* Hover effect for non-mobile devices */
