@@ -160,7 +160,7 @@ body {
     justify-content: center; /* Center horizontally */
     align-items: center; /* Center vertically */
     text-align: center; /* Additional text alignment */
-    line-height: 1; /* Normalize line height */
+    line-height: 15vmin; /* Normalize line height */
     padding: 0; /* Remove any default padding */
     width: 15vmin;
     height: 15vmin;
