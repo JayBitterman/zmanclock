@@ -6,6 +6,19 @@ body {
     width: 100vw;
     margin: 0;
     background-color: #282c34;
+    font-family: "Arial", sans-serif;
+}
+
+.grass-image {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh; /* Adjust the height as needed */
+    width: 100wh;
+    background: url('grass.png') no-repeat center center;
+    background-size: cover;
+    z-index: -1; /* Ensure it stays behind all content */
 }
 
 .clock {
@@ -22,45 +35,51 @@ body {
     height: 100%;
     border-radius: 50%;
     /* background-color: #1a1e24; */
-    border: 4px solid #3a3f4b;
+    border: 0.7vmin solid #3a3f4b;
 }
 
 #sun {
-    /* background-color: #dcd92a; */
     z-index: 5;
-    background: #edf037;
-    border-radius: 50%;
-    opacity: 0.7;
     position: absolute;
+    border-radius: 50%;
+    
+    /* A radial gradient to simulate a light source: lighter in top-left, darker bottom-right */
+    background: radial-gradient(
+        circle at 30% 30%, 
+        #ffff80 0%,    /* bright highlight */
+        #abad2b 50%,   /* main body color */
+        #8f8f20 100%   /* slightly darker at the edge */
+    );
+
+    /* A subtle box-shadow to give depth: 
+       - A softer, larger shadow to give a sense of the object floating.
+    */
+    box-shadow:
+      0 0 0.25vmin rgba(0, 0, 0, 0.3),    /* Existing small shadow */
+      0 0.5vmin 1vmin rgba(0,0,0,0.4);    /* Larger, softer shadow */
 }
 
+
 #moon {
-    /* background-color: #dcd92a; */
     z-index: 6;
     border-radius: 50%;
     border-radius: 50%;
-    opacity: 0.7;
     position: absolute;
     display: flex; 
     align-items: center; 
 }
 
 .hand {
-    width: 50%;
-    background-color: white;
     position: absolute;
     top: 50%;
     right: 50%;
+    width: 50%;
+    height: 0.5vmin;
     transform-origin: 100%;
-    transform: rotate(90deg);
-    transition: all 0.05s;
-    transition-timing-function: cubic-bezier(0.4, 2.3, 0.3, 1);
-}
-
-.single-hand {
+    background-color: #7a85a6;
+    border-radius: 0.25vmin;
+    box-shadow: 0 0 0.25vmin rgba(0, 0, 0, 0.3);
     z-index: 9;
-    height: 4px;
-    background-color: #4b86c5;
 }
 
 .clock-number {
@@ -161,7 +180,6 @@ body {
     align-items: center; /* Center vertically */
     text-align: center; /* Additional text alignment */
     line-height: 15vmin; /* Normalize line height */
-    padding: 0; /* Remove any default padding */
     width: 15vmin;
     height: 15vmin;
     background-color: #476789;
