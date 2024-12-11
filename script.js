@@ -46,6 +46,9 @@ let usr_lon;
 // Elevation above sea level (default 0)
 let elevation = 0;
 
+// The observer on earth
+let observer;
+
 // Number of days ahead to display (default 0)
 let days_ahead = 0;
 
@@ -205,7 +208,7 @@ function calcSunTimes(latitude, longitude) {
   const addTime = (baseTime, msToAdd) => new Date(baseTime.getTime() + msToAdd);
 
   // Create an observer object for the given location
-  const observer = new Astronomy.Observer(latitude, longitude, elevation);
+  observer = new Astronomy.Observer(latitude, longitude, elevation);
 
   // Get the date for the calculation
   const actualDate = new Date();
@@ -422,40 +425,61 @@ function placeSunTimes() {
 function positionMoon() {
   const moonHolder = document.getElementById('moon');
 
-  // Create an observer object
-  const observer = new Astronomy.Observer(usr_lat, usr_lon, elevation);
-
   // Calculate moonrise, moonset, and next moonrise
   let nextMoonrise = Astronomy.SearchRiseSet('Moon', observer, rising, date, 365);
   let nextMoonset = Astronomy.SearchRiseSet('Moon', observer, setting, date, 365);
   let prevMoonrise = Astronomy.SearchRiseSet('Moon', observer, rising, date, -365);
   let prevMoonset = Astronomy.SearchRiseSet('Moon', observer, setting, date, -365);
 
-  // Calculate the moon's position
-  // Calculate parallactic angle
-  // This is the angle between the zenith direction and the celestial pole
-  const moonEqPosition = Astronomy.Equator('Moon', date, observer, true, true);
-  const lst = Astronomy.SiderealTime(date);
-  const hourAngle = (lst - moonEqPosition.ra) * 15; // Convert to degrees
+  // Inputs: date, observer {latitude, longitude, elevation}, usr_lat in degrees
+// Requires: Astronomy.js or a similar library for RA/Dec and LST calculations.
 
-  // Calculate parallactic angle using the formula:
-  // tan(q) = sin(H) / (tan(φ)cos(δ) - sin(δ)cos(H))
-  // where H is hour angle, φ is latitude, δ is declination
-  const latRad = usr_lat * Math.PI / 180;
-  const decRad = moonEqPosition.dec * Math.PI / 180;
-  const haRad = hourAngle * Math.PI / 180;
+// 1. Get the topocentric positions of Moon and Sun
+const moonEq = Astronomy.Equator('Moon', date, observer, true, true);
+const sunEq  = Astronomy.Equator('Sun',  date, observer, true, true);
 
-  let parallacticAngle = Math.atan2(Math.sin(haRad), Math.tan(latRad) * Math.cos(decRad) - Math.sin(decRad) * Math.cos(haRad)) * 180 / Math.PI;
+// Convert RA from hours to radians and Dec to radians
+const alpha_m = moonEq.ra * Math.PI/12;
+const delta_m = moonEq.dec * Math.PI/180;
+const alpha_s = sunEq.ra  * Math.PI/12;
+const delta_s = sunEq.dec * Math.PI/180;
 
-  // Add hemisphere-based rotation
-  // Northern hemisphere sees the moon "right side up", southern hemisphere "upside down"
-  const hemisphereRotation = -usr_lat * 0.5; // Simple linear approximation
-  
-  // Combine rotations
-  const totalRotation = parallacticAngle + hemisphereRotation;
+// 2. Compute local sidereal time and hour angle of the Moon
+const lst = Astronomy.SiderealTime(date);
+const hourAngleDeg = (lst - moonEq.ra) * 15; 
+const haRad = hourAngleDeg * Math.PI / 180;
+
+// 3. Convert latitude to radians
+const latRad = usr_lat * Math.PI / 180;
+
+// 4. Compute the parallactic angle q
+//    tan(q) = sin(H) / (tan(phi)*cos(delta_m) - sin(delta_m)*cos(H))
+const q = Math.atan2(
+    Math.sin(haRad),
+    Math.tan(latRad)*Math.cos(delta_m) - Math.sin(delta_m)*Math.cos(haRad)
+);
+
+// 5. Compute the position angle P of the Moon's bright limb
+//    Based on standard formula:
+//    cos(gamma) = sin(delta_s)*sin(delta_m) + cos(delta_s)*cos(delta_m)*cos(alpha_s - alpha_m)
+const cos_gamma = Math.sin(delta_s)*Math.sin(delta_m) + Math.cos(delta_s)*Math.cos(delta_m)*Math.cos(alpha_s - alpha_m);
+const gamma = Math.acos(cos_gamma);
+
+const sinP = (Math.cos(delta_s)*Math.sin(alpha_s - alpha_m)) / Math.sin(gamma);
+const cosP = (Math.sin(delta_s)*Math.cos(delta_m) - Math.cos(delta_s)*Math.sin(delta_m)*Math.cos(alpha_s - alpha_m)) / Math.sin(gamma);
+
+const P = Math.atan2(sinP, cosP);
+
+// 6. Compute the Moon’s orientation relative to your default (vertical terminator)
+// If your default image shows a vertical terminator when orientation=0, use:
+// orientation = P - q
+const orientation = P - q;
+
+// Convert to degrees
+const totalRotation = orientation * 180 / Math.PI;
 
   // Rotate the moon
-  moonHolder.style.transform = `translate(-50%, -50%) rotate(${totalRotation}deg)`;
+  moonHolder.style.transform = `translate(-50%, -50%) rotate(${totalRotation + 180}deg)`;
 
   // Determine the progress angle
   let progressAngle;
@@ -488,94 +512,102 @@ function positionMoon() {
 
   // Calculate moon phase
   const waning = Astronomy.MoonPhase(date) > 180;
-  const moonPhase = Astronomy.Illumination('Moon', date).phase_fraction;
+  const moonPhase = Astronomy.Illumination('Moon', date).phase_angle;
 
   // Render moon with shading
-  renderMoon(moonHolder, 220, 220, 220, moonSize / 2, moonPhase, waning);
+  renderMoon(moonHolder, moonSize / 2, moonPhase, waning);
 }
 
 /**
  * Renders the moon with shading to represent its current phase.
  * @param {HTMLElement} holderNode - The DOM node to hold the moon rendering
- * @param {number} rVal - Red color value
- * @param {number} gVal - Green color value
- * @param {number} bVal - Blue color value
  * @param {number} R - Radius of the moon
  * @param {number} phase - Moon phase (0 to 1)
  * @param {boolean} waning - Whether the moon is waning
  */
-function renderMoon(holderNode, rVal, gVal, bVal, R, phase, waning) {
-  // 'phase' ranges from 0 (new moon) to 1 (full moon)
+function renderMoon(holderNode, R, phase, waning) {
+  // 'phase' ranges from 0 (full moon) to 180 (new moon)
   // 'waning' is a boolean indicating if the moon is waning
 
   const sphere = document.createElement("div");
-  sphere.style.zIndex = "7";
   const hemiSphere = document.createElement("div");
-  sphere.style.zIndex = "8";
   const dia = 2 * R;
-  const brightColor = `rgb(${rVal},${gVal},${bVal})`;
-  const darkColor = `rgb(${Math.round(0.2 * rVal)},${Math.round(0.2 * gVal)},${Math.round(0.2 * bVal)})`;
+
+  // Base colors
+  const brightColor = `rgb(160,160,150)`; // Mid-gray bright side
+  const darkColor = `rgb(20,20,25)`;      // Darker gray for shadowed side
+
+  // Create gradients for a 3D look:
+  // Bright gradient: highlight top-left, fade to main brightColor, then darker edge
+  const brightGradient = `radial-gradient(circle at 30% 30%, #f0f0e0, ${brightColor} 70%, #6c6c64 100%)`;
 
   // Corrected calculation of the illuminated width based on phase
-  const angle = phase * Math.PI;
+  const angle = Math.PI - (phase * Math.PI / 180);
   let hw = R * Math.cos(angle);
+  
   let sphereTxt = "";
   let hemiTxt = "";
 
   sphereTxt += `position:absolute; width:${dia}vmin; height:${dia}vmin; `;
   sphereTxt += `border-radius:${R}vmin; `;
-  sphereTxt += "overflow:hidden; ";
+  // Add a subtle box shadow to give the Moon depth
+  sphereTxt += `box-shadow: 0 0.1vmin 0.25vmin rgba(0,0,0,0.4);`;
 
-  if (phase <= 0.5) {
-    // Less than half illuminated
-    sphereTxt += `background-color:${brightColor}; `;
+  if (phase >= 90) {
+    // Less than half illuminated: sphere is bright side, hemisphere is dark overlay
+    sphereTxt += `background: ${brightGradient}; `;
+
+    // Subtle 3D shadow from the hemiSphere perspective
+    hemiTxt += "box-shadow: "+(0.1*R)+"vmin 0 "+(0.3*R)+"vmin 0vmin rgba(0,0,0,0.5);";
 
     if (waning) {
       // Waning crescent (illumination on the left)
-      hemiTxt += "position:absolute; right:0; ";
+      hemiTxt += `position:absolute; right:0; `;
       hemiTxt += `width:${R + hw}vmin; height:${dia}vmin; `;
+      // Rounded borders as before
       hemiTxt += `border-top-left-radius:${hw}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-left-radius:${hw}vmin ${R}vmin; `;
       hemiTxt += `border-top-right-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-right-radius:${R}vmin ${R}vmin; `;
-      // moon.style.transform = `translate(-50%, -50%) rotate(${180 - sunTheta + (sunTheta + 90) * 2}deg)`;
     } else {
       // Waxing crescent (illumination on the right)
-      hemiTxt += "position:absolute; left:0; ";
+      hemiTxt += `position:absolute; left:0; `;
       hemiTxt += `width:${R + hw}vmin; height:${dia}vmin; `;
       hemiTxt += `border-top-left-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-left-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-top-right-radius:${hw}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-right-radius:${hw}vmin ${R}vmin; `;
-      // moon.style.transform = `translate(-50%, -50%) rotate(${-sunTheta + (sunTheta + 90) * 2}deg)`;
     }
 
-    hemiTxt += `background-color:${darkColor}; `;
+    // Use the dark gradient for the hemisphere
+    hemiTxt += `background: ${darkColor}; `;
+
   } else {
-    // More than half illuminated
-    sphereTxt += `background-color:${darkColor}; `;
+    // More than half illuminated: sphere is dark side, hemisphere is bright overlay
+    sphereTxt += `background: ${darkColor}; `;
+    // Inset shadow for a different look on the gibbous phases
+    hemiTxt += "box-shadow:inset "+(0.1*R)+"vmin 0 "+(0.3*R)+"vmin 0vmin rgba(0,0,0,0.5);";
 
     if (waning) {
       // Waning gibbous (shadow on the right)
-      hemiTxt += "position:absolute; left:0; ";
+      hemiTxt += `position:absolute; left:0; `;
       hemiTxt += `width:${R - hw}vmin; height:${dia}vmin; `;
       hemiTxt += `border-top-left-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-left-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-top-right-radius:${-hw}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-right-radius:${-hw}vmin ${R}vmin; `;
-      // moon.style.transform = `translate(-50%, -50%) rotate(${180 - sunTheta + (sunTheta + 90) * 2}deg)`;
     } else {
       // Waxing gibbous (shadow on the left)
-      hemiTxt += "position:absolute; right:0; ";
+      hemiTxt += `position:absolute; right:0; `;
       hemiTxt += `width:${R - hw}vmin; height:${dia}vmin; `;
       hemiTxt += `border-top-left-radius:${-hw}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-left-radius:${-hw}vmin ${R}vmin; `;
       hemiTxt += `border-top-right-radius:${R}vmin ${R}vmin; `;
       hemiTxt += `border-bottom-right-radius:${R}vmin ${R}vmin; `;
-      // moon.style.transform = `translate(-50%, -50%) rotate(${-sunTheta + (sunTheta + 90) * 2}deg)`;
     }
 
-    hemiTxt += `background-color:${brightColor}; `;
+    // Use the bright gradient for the hemisphere
+    hemiTxt += `background: ${brightGradient}; `;
   }
 
   sphere.style.cssText = sphereTxt;
@@ -584,6 +616,7 @@ function renderMoon(holderNode, rVal, gVal, bVal, R, phase, waning) {
   sphere.appendChild(hemiSphere);
   holderNode.appendChild(sphere);
 }
+
 
 /**
  * Positions the clock numbers around the clock face.
@@ -714,6 +747,8 @@ function setClockHand() {
     : 180 + (seasonalHours / 12) * 180;
 
   // Adjust for the clock's orientation
+  // now 0 degrees means sun is at right of clock
+  // 90 degrees means sun is at top of clock 
   totalDegrees = (360 - totalDegrees + 180) % 360;
   sunTheta = 180 - totalDegrees;
 
@@ -759,6 +794,28 @@ function setClockHand() {
 
   sunElement.style.left = `${left}%`;
   sunElement.style.top = `${top}%`;
+}
+
+function setBackgroundColor(){
+  function calcGradient(base){
+    function bell(sunDeg) {
+      const e = Math.E;
+      return Math.pow(e, -Math.pow(sunDeg / 10, 2));
+    }
+    const opacity = bell(sunTheta >= 90 ? (180 - sunTheta) : sunTheta < -90 ? -sunTheta - 180 : sunTheta);
+    const brightness = opacity / 2;
+    const set_rise = Math.abs(sunTheta) >= 90 ? 0 : 100;
+    const redGrad = `rgba(${brightness * 253}, ${brightness * 94}, ${brightness * 83}, ${opacity})`;
+    const orangeGrad = `rgba(${brightness * 255}, ${brightness * 255 / 1.58}, ${brightness * 255 / 2.52}, ${opacity})`;
+    const tan = `rgba(${brightness * 255 / 1.02}, ${brightness * 255 / 1.46}, ${brightness * 255 / 1.93}, ${opacity})`;
+    const blueTan = `rgba(${brightness * 255 / 1.12}, ${brightness * 255 / 1.4}, ${brightness * 255 / 1.56}, ${opacity})`;
+    const darkPurple = `rgba(${brightness * 171}, ${brightness * 164}, ${brightness * 180}, ${opacity})`;
+    return`radial-gradient(circle at ${set_rise}% 75vh, ${redGrad} 0%, ${orangeGrad} 5%, ${tan} 10%, ${blueTan} 20%, ${darkPurple} 30%, ${base} 100%)`;
+  }
+  const bright = Math.max(0, Math.min(Math.sin(sunTheta * Math.PI / 180) + 0.3, 1));
+  const baseColor = `rgb(${Math.pow(bright, 0.7) * 255 / 1.8}, ${bright * 255 / 1.2}, ${bright * 255})`; // Set the background color to light blue
+  const riseSetColor = calcGradient(baseColor);
+  document.body.style.background = `${riseSetColor}, ${baseColor}`;
 }
 
 /**
@@ -918,6 +975,7 @@ function updateClock() {
   calcSunTimes(usr_lat, usr_lon);
   setClockHand();   
   setDigitalTimes();
+  setBackgroundColor();
   positionMoon();
   setDate();
   placeSunTimes();
