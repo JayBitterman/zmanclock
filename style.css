@@ -9,11 +9,6 @@ body {
     font-family: "Arial", sans-serif;
 }
 
-.dock-area {
-    background-color: black;
-    color: white; /* Optional: ensures text is visible if needed */
-}
-
 .grass-image {
     position: fixed;
     bottom: 0;
@@ -23,7 +18,7 @@ body {
     width: 100wh;
     background: url('grass.png') no-repeat center center;
     background-size: cover;
-    z-index: -1; /* Ensure it stays behind all content */
+    z-index: 2; /* Ensure it stays behind all content */
 }
 
 .clock {
@@ -204,17 +199,17 @@ body {
 }
 
 .nav-button, .speed-button {
-    width: 15vw;
-    height: 15vw;
+    width: 15vmin;
+    height: 15vmin;
     border-radius: 50%;
-    font-size: 8vw;
+    font-size: 8vmin;
 }
 
 .reset-button {
-    width: 10vw;
-    height: 8vw;
-    border-radius: 30%;
-    font-size: 5vw;
+    width: 10vmin;
+    height: 10vmin;
+    border-radius: 50%;
+    font-size: 7vmin;
 }
 
 /* stretch the icon */
