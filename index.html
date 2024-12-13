@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>24-Hour Single-Hand Analog Clock</title>
+    <title>Zman Clock</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 <body>
     <div id="digital-times">
@@ -17,13 +18,18 @@
         <div id="holiday"></div>
         <div id="omer"></div>
     </div>
-    <div class="day-navigator">
-            <button class="reset-button" id="reset">&#8634;</button>
-            <button class="nav-button" id="yesterday">&#8592;</button>
-            <button class="nav-button" id="tomorrow">&#8594;</button>
-    </div>
-    <div class="speed-navigator">
-        <button class="reset-button" id="speed">&#9193;</button>
+    <div class="navigators">
+        <div class="day-navigator">
+            <button class="nav-button" id="yesterday"><i class='fa fa-arrow-left'></i></button>
+            <button class="nav-button" id="tomorrow"><i class='fa fa-arrow-right'></i></button>
+        </div>
+        <div class="reset-navigator">
+            <button class="reset-button" id="reset"><i class='fa fa-undo'></i></button>
+        </div>
+        <div class="speed-navigator">
+            <button class="speed-button" id="speed-backward"><i class="fa fa-fast-backward"></i></button>
+            <button class="speed-button" id="speed-forward"><i class="fa fa-fast-forward"></i></button>
+        </div>
     </div>
     <div class="clock">
         <div class="clock-face">
