@@ -39,6 +39,12 @@ const dayButtons = [
   { id: 'reset', change: 0 }
 ];
 
+const speedButtons = [
+  { id: 'speed-forward', change: 1 },
+  { id: 'speed-backward', change: -1 },
+  { id: 'reset', change: 0 }
+];
+
 // User's latitude and longitude
 let usr_lat;
 let usr_lon;
@@ -67,7 +73,6 @@ let israelGeoJSON;
 
 // Control clock speed
 let offset = 0; // Tracks the offset from the current time (for speeding up)
-let daysAhead = 0; // Tracks how many days ahead the user wants to see
 let speedMultiplier = 0; // Speed level: 0 = normal, 1 = speed up, 2 = even faster
 let intervalId = null; // Tracks the interval ID
 
@@ -112,41 +117,61 @@ function changeDay(direction) {
 
 function updateResetButton() {
   const resetButton = document.getElementById('reset');
-  if (days_ahead !== 0) {
+  if (days_ahead !== 0 || intervalId != null) {
       resetButton.classList.add('visible');
   } else {
       resetButton.classList.remove('visible');
   }
 }
 
-// Add event listener to the speed button
-document.getElementById('speed').addEventListener('click', handleSpeedButtonClick);
+speedButtons.forEach(button => {
+  const btnElement = document.getElementById(button.id);
+  btnElement.addEventListener('click', () => {
+      handleSpeedButtonClick(button.change); // Change the day
+      updateResetButton();
+  });
+});
 
 // Function to handle speed button clicks
-function handleSpeedButtonClick() {
-  if (speedMultiplier === 0) {
-      // First click: Start speeding up (base speed)
-      speedMultiplier = 10;
-      clearInterval(intervalId); // Clear any previous interval
-      intervalId = setInterval(() => {
-          offset += 1000 * speedMultiplier; // Add to offset
-          // updateClock();
-      }, 10); // Update every 10ms
-  } else if (speedMultiplier === 10) {
-      // Second click: Increase speed
-      speedMultiplier = 100; // Increase speed multiplier
-      clearInterval(intervalId);
-      intervalId = setInterval(() => {
-          offset += 1000 * speedMultiplier; // Add more to offset
-          // updateClock();
-      }, 10);
-  } else {
-      // Third click: Reset to current time
+function handleSpeedButtonClick(change) {
+  if(change == 0){
       speedMultiplier = 0;
       clearInterval(intervalId);
+      intervalId = null;
       offset = 0; // Reset offset
       updateClock();
+      return;
   }
+  if(change == 1){
+    if(speedMultiplier == -100){
+      speedMultiplier = -10;
+    }
+    else if(speedMultiplier == -10){
+      speedMultiplier = 0;
+    }
+    else if(speedMultiplier == 0){
+      speedMultiplier = 10;
+    }
+    else if(speedMultiplier == 10){
+      speedMultiplier = 100;
+    }
+  }
+  else if(change == -1){
+    if(speedMultiplier == 100){
+      speedMultiplier = 10;
+    }
+    else if(speedMultiplier == 10){
+      speedMultiplier = 0;
+    }
+    else if(speedMultiplier == 0){
+      speedMultiplier = -10;
+    }
+    else if(speedMultiplier == -10){
+      speedMultiplier = -100;
+    }
+  }
+  clearInterval(intervalId); // Clear any previous interval
+  intervalId = setInterval(() => {offset += 1000 * speedMultiplier;}, 10); // Update every 10ms
 }
 
 /**
@@ -454,19 +479,16 @@ const latRad = usr_lat * Math.PI / 180;
 
 // 4. Compute the parallactic angle q
 //    tan(q) = sin(H) / (tan(phi)*cos(delta_m) - sin(delta_m)*cos(H))
-const q = Math.atan2(
-    Math.sin(haRad),
-    Math.tan(latRad)*Math.cos(delta_m) - Math.sin(delta_m)*Math.cos(haRad)
-);
+const q = Math.atan2(Math.sin(haRad), Math.tan(latRad) * Math.cos(delta_m) - Math.sin(delta_m) * Math.cos(haRad));
 
 // 5. Compute the position angle P of the Moon's bright limb
 //    Based on standard formula:
 //    cos(gamma) = sin(delta_s)*sin(delta_m) + cos(delta_s)*cos(delta_m)*cos(alpha_s - alpha_m)
-const cos_gamma = Math.sin(delta_s)*Math.sin(delta_m) + Math.cos(delta_s)*Math.cos(delta_m)*Math.cos(alpha_s - alpha_m);
+const cos_gamma = Math.sin(delta_s) * Math.sin(delta_m) + Math.cos(delta_s) * Math.cos(delta_m) * Math.cos(alpha_s - alpha_m);
 const gamma = Math.acos(cos_gamma);
 
-const sinP = (Math.cos(delta_s)*Math.sin(alpha_s - alpha_m)) / Math.sin(gamma);
-const cosP = (Math.sin(delta_s)*Math.cos(delta_m) - Math.cos(delta_s)*Math.sin(delta_m)*Math.cos(alpha_s - alpha_m)) / Math.sin(gamma);
+const sinP = (Math.cos(delta_s) * Math.sin(alpha_s - alpha_m)) / Math.sin(gamma);
+const cosP = (Math.sin(delta_s) * Math.cos(delta_m) - Math.cos(delta_s) * Math.sin(delta_m) * Math.cos(alpha_s - alpha_m)) / Math.sin(gamma);
 
 const P = Math.atan2(sinP, cosP);
 
@@ -479,7 +501,7 @@ const orientation = P - q;
 const totalRotation = orientation * 180 / Math.PI;
 
   // Rotate the moon
-  moonHolder.style.transform = `translate(-50%, -50%) rotate(${totalRotation + 180}deg)`;
+  moonHolder.style.transform = `translate(-50%, -50%) rotate(${totalRotation + 90}deg)`;
 
   // Determine the progress angle
   let progressAngle;
