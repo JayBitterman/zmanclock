@@ -9,6 +9,11 @@ body {
     font-family: "Arial", sans-serif;
 }
 
+.dock-area {
+    background-color: black;
+    color: white; /* Optional: ensures text is visible if needed */
+}
+
 .grass-image {
     position: fixed;
     bottom: 0;
@@ -34,8 +39,8 @@ body {
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    /* background-color: #1a1e24; */
     border: 0.7vmin solid #3a3f4b;
+    box-shadow: 0 0vmin 3vmin rgba(0, 0, 0, 0.5); /* Added shadow */
 }
 
 #sun {
@@ -93,6 +98,8 @@ body {
     width: auto;
     height: auto;
     font-size: 3.8vmin;
+    /* Add a light text-shadow to give a subtle embossed look */
+    text-shadow: 0.2vmin 0.2vmin 0.3vmin rgba(0,0,0,0.5);
 }
 
 .sun-time {
@@ -135,29 +142,34 @@ body {
     padding: 1rem;
 }
 
-.day-navigator {
+.navigators {
+    z-index: 3;
     position: fixed;
     bottom: 0;
-    right: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.day-navigator, .speed-navigator, .reset-navigator {
+    position: fixed;
+    bottom: 0;
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 5vmin 2vmin;
-    gap: 2vmin;
+    padding: 5vh 2vw;
+    gap: 2vh;
+}
+
+.day-navigator {
+    right: 0;
 }
 
 .speed-navigator {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    padding: 5vmin 2vmin;
-    gap: 2vmin;
+    left: 0;    
 }
 
-.nav-button:active {
+.nav-button:active, .speed-button:active {
     outline: none; /* Prevent outline on tap */
     box-shadow: 0 0 0 0.4vmin rgba(0, 0, 0, 0.5); /* Optional active effect */
     background-color: #0056b3;
@@ -173,33 +185,49 @@ body {
     display: block;
 }
 
-.nav-button, .reset-button {
+.nav-button, .speed-button, .reset-button {
     display: flex; /* Ensure flexbox is used */
     border: none;
     justify-content: center; /* Center horizontally */
     align-items: center; /* Center vertically */
-    text-align: center; /* Additional text alignment */
-    line-height: 15vmin; /* Normalize line height */
-    width: 15vmin;
-    height: 15vmin;
-    background-color: #476789;
-    color: white;
+    background: linear-gradient(to bottom, #617c98, #1a2b3a); /* A subtle gradient background */
+    color: black;
     cursor: pointer;
-    font-size: 8vmin;
     transition: background-color 0.2s;
-    border-radius: 50%;
-    /* Mobile-specific fix */
-    -webkit-tap-highlight-color: transparent; /* Disable tap highlight */
-    -webkit-touch-callout: none; /* Prevent context menu on long press */
-    user-select: none; /* Disable text selection */
+    box-shadow: 0 0.5vmin 1vmin rgba(0,0,0,0.5); /* Added shadow */
+
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+
+    line-height: normal;
+    font-weight: bold;
 }
 
+.nav-button, .speed-button {
+    width: 15vw;
+    height: 15vw;
+    border-radius: 50%;
+    font-size: 8vw;
+}
+
+.reset-button {
+    width: 10vw;
+    height: 8vw;
+    border-radius: 30%;
+    font-size: 5vw;
+}
+
+/* stretch the icon */
+.fa-undo {
+    display: inline-block;    /* ensure it can be transformed as a block element */
+    transform: scaleX(1);     /* scale horizontally by a factor of 2 */
+    transform-origin: center; /* keep the arrow centered */
+  }
+
+/* Hover effect for non-mobile devices */
 /* Hover effect for non-mobile devices */
 @media (hover: hover) {
-    .nav-button:hover {
-        background-color: #0056b3; /* Darker blue on hover */
-    }
-    .reset-button:hover {
-        background-color: #0056b3; /* Darker blue on hover */
+    .nav-button:hover, .speed-button:hover, .reset-button:hover {
+        background: linear-gradient(to bottom, #5b85a9, #3f5c7c);
     }
 }
