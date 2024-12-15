@@ -3,44 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000">
     <title>Zman Clock</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="clock gradient icon.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 <body>
-    <div id="digital-times">
-        <div id="digital-time"></div>
-        <div id="seasonal-time"></div>
-        <div id="day-of-week"></div>
-    </div>
-    <div id="week-info">
-        <div id="date"></div>
-        <div id="holiday"></div>
-        <div id="omer"></div>
-    </div>
-    <div class="navigators">
-        <div class="day-navigator">
-            <button class="nav-button" id="yesterday"><i class='fa fa-arrow-left'></i></button>
-            <button class="nav-button" id="tomorrow"><i class='fa fa-arrow-right'></i></button>
+    <div id="screen">
+        <div id="digital-times">
+            <div id="digital-time"></div>
+            <div id="seasonal-time"></div>
+            <div id="day-of-week"></div>
         </div>
-        <div class="reset-navigator">
-            <button class="reset-button" id="reset"><i class='fa fa-undo'></i></button>
+        <div id="week-info">
+            <div id="date"></div>
+            <div id="holiday"></div>
+            <div id="omer"></div>
         </div>
-        <div class="speed-navigator">
-            <button class="speed-button" id="speed-backward"><i class="fa fa-fast-backward"></i></button>
-            <button class="speed-button" id="speed-forward"><i class="fa fa-fast-forward"></i></button>
+        <div class="navigators">
+            <div class="day-navigator">
+                <button class="nav-button" id="yesterday"><i class='fa fa-arrow-left'></i></button>
+                <button class="nav-button" id="tomorrow"><i class='fa fa-arrow-right'></i></button>
+            </div>
+            <div class="reset-navigator">
+                <button class="reset-button" id="reset"><i class='fa fa-undo'></i></button>
+            </div>
+            <div class="speed-navigator">
+                <button class="speed-button" id="speed-backward"><i class="fa fa-fast-backward"></i></button>
+                <button class="speed-button" id="speed-forward"><i class="fa fa-fast-forward"></i></button>
+            </div>
         </div>
-    </div>
-    <div class="clock">
-        <div class="clock-face">
-            <div id="clock-numbers"></div>
-            <div id="sun-times"></div>
-            <div class="hand single-hand"></div>
-            <div id="sun"></div>
-            <div id="moon"></div>
+        <div class="clock">
+            <div class="clock-face">
+                <div id="clock-numbers"></div>
+                <div id="sun-times"></div>
+                <div class="hand single-hand"></div>
+                <div id="sun"></div>
+                <div id="moon"></div>
+            </div>
         </div>
+        <div class="grass-image"></div>
     </div>
     <script type="module" src="script.js"></script>
-    <div class="grass-image"></div>
 </body>
 </html>
