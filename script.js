@@ -837,7 +837,7 @@ function setBackgroundColor(){
   const bright = Math.max(0, Math.min(Math.sin(sunTheta * Math.PI / 180) + 0.3, 1));
   const baseColor = `rgb(${Math.pow(bright, 0.7) * 255 / 1.8}, ${bright * 255 / 1.2}, ${bright * 255})`; // Set the background color to light blue
   const riseSetColor = calcGradient(baseColor);
-  document.body.style.background = `${riseSetColor}, ${baseColor}`;
+  document.getElementById("screen").style.background = `${riseSetColor}, ${baseColor}`;
 }
 
 /**
