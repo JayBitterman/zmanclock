@@ -2,14 +2,18 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    height: 100%;
     width: 100vw;
     margin: 0;
     background-color: black;
     font-family: "Arial", sans-serif;
+    overflow: hidden;          /* -- no scroll bars */
+    overscroll-behavior: none; /* -- blocks iOS/Android pull-to-refresh bounce */
 }
 
 #screen {
+    position: fixed;           /* fills the viewport and never moves */
+    inset: 0;     
     display: flex;
     justify-content: center;
     align-items: center;
@@ -22,12 +26,11 @@ body {
     position: fixed;
     bottom: 0;
     left: 0;
-    width: 100%;
-    height: 100vh; /* Adjust the height as needed */
-    width: 100wh;
-    background: url('grass.png') no-repeat center center;
-    background-size: cover;
-    z-index: 2; /* Ensure it stays behind all content */
+    width: 100vw;
+    height: 13vh;
+    background: url('grass.png') repeat-x bottom center;
+    background-size: contain;
+    z-index: 2;
 }
 
 .clock {
@@ -44,7 +47,7 @@ body {
     height: 100%;
     border-radius: 50%;
     border: 0.7vmin solid #3a3f4b;
-    box-shadow: 0 0vmin 3vmin rgba(0, 0, 0, 0.5); /* Added shadow */
+    box-shadow: 0 0vmin 1vmin rgba(0, 0, 0, 0.5); /* Added shadow */
 }
 
 #sun {
@@ -161,8 +164,8 @@ body {
     display: flex;
     flex-direction: row;
     align-items: center;
-    padding: 5vh 2vw;
-    gap: 2vh;
+    padding: 5vmin 2vmin;
+    gap: 1vmin;
 }
 
 .day-navigator {
@@ -170,7 +173,7 @@ body {
 }
 
 .speed-navigator {
-    left: 0;    
+    left: 8vmin;    
 }
 
 .nav-button:active, .speed-button:active {
@@ -189,12 +192,12 @@ body {
     display: block;
 }
 
-.nav-button, .speed-button, .reset-button {
+.nav-button, .speed-button, .reset-button, #settings-icon {
     display: flex; /* Ensure flexbox is used */
     border: none;
     justify-content: center; /* Center horizontally */
     align-items: center; /* Center vertically */
-    background: linear-gradient(to bottom, #617c98, #1a2b3a); /* A subtle gradient background */
+    background: linear-gradient(to bottom, #617c98, #2f4e68); /* A subtle gradient background */
     color: black;
     cursor: pointer;
     transition: background-color 0.2s;
@@ -221,14 +224,141 @@ body {
     font-size: 7vmin;
 }
 
-/* stretch the icon */
-.fa-undo {
-    display: inline-block;    /* ensure it can be transformed as a block element */
-    transform: scaleX(1);     /* scale horizontally by a factor of 2 */
-    transform-origin: center; /* keep the arrow centered */
+#settings-icon {
+    z-index: 3;
+    position: absolute;
+    width: 7vmin;
+    height: 7vmin;
+    border-radius: 50%;
+    bottom: 3vmin;
+    left: 2vmin;
+    font-size: 6vmin;
+
+}
+
+.panel {
+    position: fixed;
+    top: 0; 
+    right: 0;
+    width: 60vw;
+    max-width: 400px;
+    height: 100vh;
+    background: #1a2b3a;
+    color: white;
+    box-shadow: -0.5vmin 0 1vmin rgba(0,0,0,0.5);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    z-index: 20;
+
+    /* Flex container with column direction */
+    display: flex;
+    flex-direction: column;
+}
+
+/* When the panel is visible */
+.panel.visible {
+    transform: translateX(0);
+}
+
+/* Hide the panel by default */
+.panel.hidden {
+    display: none;
+}
+
+/* The main scrollable area */
+.panel-content {
+    /* Allow this area to expand and shrink in the column layout */
+    flex: 1;
+
+    /* Add some padding */
+    padding: 2rem;
+
+    /* Enable scrolling when content overflows */
+    overflow-y: auto;
+}
+
+/* Footer stays at the bottom of the panel */
+.panel-footer {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center; /* optional, if you also want them vertically centered */
+    background-color: #0c141c;
+    gap: 1rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
   }
 
-/* Hover effect for non-mobile devices */
+/* Example heading style */
+.panel-content h2 {
+    margin-top: 0;
+    font-size: 1.5rem;
+}
+
+/* The rest of your existing style rules remain the same... */
+
+  
+  .option-group {
+    margin: 1rem 0;
+  }
+  
+  .close-button {
+    padding: 0.5rem 0.8rem;
+    background: #617c98;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: #000;
+  }
+  
+  details {
+    margin-bottom: 1rem;
+  }
+  
+  details summary {
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+
+  details[open] summary::after {
+    content: "▲";
+    float: right;
+    font-size: 0.9rem;
+  }
+
+  details summary::after {
+    content: "▼";
+    float: right;
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+  }
+
+  .option-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; 
+    /* If you want them aligned to the left of the container, this ensures that */
+    gap: 1rem; /* Optional, adds vertical spacing between options */
+}
+
+.option-group label {
+    font-size: 1rem;
+  }
+
+  /* A bit of spacing for each label */
+.option-group label {
+    margin-bottom: 0.3rem;
+  }
+
+/* Crisp horizontal line to separate sub-sections */
+hr {
+    border: 0;
+    border-top: 1px solid #ccc;
+  }
+  
+
 /* Hover effect for non-mobile devices */
 @media (hover: hover) {
     .nav-button:hover, .speed-button:hover, .reset-button:hover {
