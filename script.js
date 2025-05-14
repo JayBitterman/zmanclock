@@ -29,6 +29,10 @@ const omerDay = {116: 1, 117: 2, 118: 3, 119: 4, 120: 5, 121: 6, 122: 7, 123: 8,
 // Hebrew names for weekdays
 const weekday = {0: "יום ראשון", 1: "יום שני", 2: "יום שלישי", 3: "יום רביעי", 4: "יום חמישי", 5: "יום שישי", 6: "שבת קודש"};
 
+// Double Parsha corrections
+const dubParsha = {"פרשת ויקהלפקודי": "פרשת ויקהל-פקודי", "פרשת תזריעמצרע": "פרשת תזריע-מצרע", "פרשת אחרי מותקדשים": "פרשת אחרי מות-קדשים",
+  "פרשת בהרבחקתי": "פרשת בהר-בחקתי", "פרשת חקתבלק": "פרשת חקת-בלק", "פרשת מטותמסעי": "פרשת מטות-מסעי", "פרשת נצביםוילך": "פרשת נצבים-וילך" 
+}
 // Constants for rise and set
 const rising = 1;
 const setting = -1;
@@ -987,6 +991,9 @@ function setDate() {
   // set this week's sedra
   const sedraInstance = document.createElement('div');
   sedraInstance.textContent = new hcal.Sedra(hdate.getFullYear(), inIsrael(usr_lat, usr_lon)).getString(hdate, 'he').replace(/[\u0591-\u05C7]/g, '');
+  if (sedraInstance.textContent in dubParsha){
+    sedraInstance.textContent = dubParsha[sedraInstance.textContent];
+  } 
   holidayHolder.appendChild(sedraInstance);
 }
 
