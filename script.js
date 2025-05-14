@@ -836,7 +836,7 @@ function setBackgroundColor(){
     const tan = `rgba(${brightness * 255 / 1.02}, ${brightness * 255 / 1.46}, ${brightness * 255 / 1.93}, ${opacity})`;
     const blueTan = `rgba(${brightness * 255 / 1.12}, ${brightness * 255 / 1.4}, ${brightness * 255 / 1.56}, ${opacity})`;
     const darkPurple = `rgba(${brightness * 171}, ${brightness * 164}, ${brightness * 180}, ${opacity})`;
-    return`radial-gradient(circle at ${set_rise}% 75vh, ${redGrad} 0%, ${orangeGrad} 5%, ${tan} 10%, ${blueTan} 20%, ${darkPurple} 30%, ${base} 100%)`;
+    return`radial-gradient(circle at ${set_rise}% 97vh, ${redGrad} 0%, ${orangeGrad} 5%, ${tan} 10%, ${blueTan} 20%, ${darkPurple} 30%, ${base} 100%)`;
   }
   const bright = Math.max(0, Math.min(Math.sin(sunTheta * Math.PI / 180) + 0.3, 1));
   const baseColor = `rgb(${Math.pow(bright, 0.7) * 255 / 1.8}, ${bright * 255 / 1.2}, ${bright * 255})`; // Set the background color to light blue
