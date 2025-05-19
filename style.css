@@ -41,21 +41,21 @@ body {
   @media (min-width: 1200px) {
     .terrain {
       background-image: url("terrain-broad.png");
-      --terrain-height: 121.5vh;               /* big screens: taller band */
+      --terrain-height: 125.5vh;               /* big screens: taller band */
     }
   }
   
   @media (min-width: 768px) and (max-width: 1199px) {
     .terrain {
       background-image: url("terrain-medium.png");
-      --terrain-height: 124vh;               /* medium screens: normal band */
+      --terrain-height: 129vh;               /* medium screens: normal band */
     }
   }
   
   @media (max-width: 767px) {
     .terrain {
       background-image: url("terrain-thin.png");
-      --terrain-height: 135vh;               /* small screens: squatter band */
+      --terrain-height: 136vh;               /* small screens: squatter band */
     }
   }
 .clock {
