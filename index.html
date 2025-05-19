@@ -35,7 +35,8 @@
             </div>
         </div>
         <div class="clock">
-            <div class="clock-face">
+            <div class="clock-container">
+                <div class="clock-face"></div>
                 <div id="clock-numbers"></div>
                 <div id="sun-times"></div>
                 <div class="hand single-hand"></div>
@@ -43,8 +44,44 @@
                 <div id="moon"></div>
             </div>
         </div>
-        <div class="grass-image"></div>
+        <button id="calendar-toggle" class="calendar-btn" title="Calendar">📅</button>
+        <div id="calendar-wrapper" style="display:none">
+            <div class="calendar-container">
+                <div class="calendar-controls">
+                    <div class="calendar-type-select">
+                        <input type="radio" id="gregorian" name="calendarType" value="gregorian" checked>
+                        <label for="gregorian">Gregorian</label>
+                        <input type="radio" id="hebrew" name="calendarType" value="hebrew">
+                        <label for="hebrew">Hebrew</label>
+                    </div>
+        
+                    <div class="input-section">
+                        <input type="number" id="month-input" placeholder="MM" min="1">
+                        <span>/</span>
+                        <input type="number" id="day-input" placeholder="DD" min="1">
+                        <span>/</span>
+                        <input type="number" id="year-input" placeholder="YYYY" min="1">
+                        <button id="go-button">Go</button>
+                    </div>
+                </div>
+        
+                <div class="calendar" id="calendar">
+                    <div class="header">
+                        <button id="prev-month">&lt;</button>
+                        <div class="month-year" id="month-year"></div>
+                        <button id="next-month">&gt;</button>
+                    </div>
+                    <div class="weekdays" id="weekdays">
+                        </div>
+                    <div class="days-grid" id="days-grid">
+                        </div>
+                </div>
+            </div>
+          </div>
+          <div class="terrain"></div>
     </div>
     <script type="module" src="script.js"></script>
+    <script type="module" src="calendar.js"></script>      <!-- new   calendar -->
+
 </body>
 </html>
