@@ -4,7 +4,7 @@ import * as hcal from 'https://cdn.jsdelivr.net/npm/@hebcal/core@5.5.0/+esm';
 import * as jDate from 'https://cdn.jsdelivr.net/npm/jewish-date@2.0.12/+esm';
 import { point, booleanPointInPolygon } from 'https://cdn.jsdelivr.net/npm/@turf/turf@7.1.0/+esm';
 
-
+ 
 // Get the clock hand element
 const singleHand = document.querySelector('.single-hand');
 
