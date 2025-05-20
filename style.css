@@ -225,7 +225,7 @@ body {
     display: block;
 }
 
-.nav-button, .speed-button, .reset-button, #settings-icon {
+.nav-button, .speed-button, .reset-button, #settings-icon, .calendar-btn {
     display: flex; /* Ensure flexbox is used */
     border: none;
     justify-content: center; /* Center horizontally */
@@ -261,12 +261,10 @@ body {
 .calendar-btn{
     position:fixed;
     bottom:2vmin;
-    z-index:15;              /* above clock */
+    z-index:17;              /* above clock */
     width:9vmin;height:9vmin;
-    border:none;border-radius:50%;
-    font-size:5vmin;cursor:pointer;
-    background:linear-gradient(#617c98,#2f4e68);
-    box-shadow:0 0.5vmin 1vmin rgba(0,0,0,.5);
+    border-radius:50%;
+    font-size:5vmin;
     bottom:auto;                 /* JS sets this */
     right:2vmin;                 /* always hug the right edge */
   }
@@ -279,7 +277,7 @@ body {
   }
   
   #calendar-wrapper {
-    z-index: 13;
+    z-index: 17;
     position: fixed;
   
     /* ─── anchor above the button (which itself sits above the nav strip) ─── */
