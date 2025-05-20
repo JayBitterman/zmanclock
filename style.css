@@ -3,7 +3,7 @@ body {
     justify-content: center;
     align-items: center;
     height: 100%;
-    width: 100vw;
+    width: 100dvw;
     margin: 0;
     background-color: black;
     font-family: "Arial", sans-serif;
@@ -17,8 +17,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    width: 100vw;
+    height: 100dvh;
+    width: 100dvw;
     margin: 0;
 }
 
@@ -28,34 +28,34 @@ body {
     right: 0;
     bottom: 0;
     width: 100%;
-    height: var(--terrain-height, 30vh);    /* default if nothing else matches */
+    height: var(--terrain-height, 30dvh);    /* default if nothing else matches */
     background-repeat: no-repeat;
     background-position: bottom center;
     background-size: 100% 100%;
     pointer-events: none;
-    z-index: -1;
-    opacity: 0.7;
+    z-index: 14;
+    opacity: 0.75;
   }
   
   /* swap in image + adjust height */
   @media (min-width: 1200px) {
     .terrain {
       background-image: url("terrain-broad.png");
-      --terrain-height: 125.5vh;               /* big screens: taller band */
+      --terrain-height: 125.5dvh;               /* big screens: taller band */
     }
   }
   
   @media (min-width: 768px) and (max-width: 1199px) {
     .terrain {
       background-image: url("terrain-medium.png");
-      --terrain-height: 129vh;               /* medium screens: normal band */
+      --terrain-height: 129dvh;               /* medium screens: normal band */
     }
   }
   
   @media (max-width: 767px) {
     .terrain {
       background-image: url("terrain-thin.png");
-      --terrain-height: 136vh;               /* small screens: squatter band */
+      --terrain-height: 136dvh;               /* small screens: squatter band */
     }
   }
 .clock {
@@ -84,7 +84,7 @@ body {
   }
 
 #sun {
-    z-index: -2;
+    z-index: 5;
     position: absolute;
     border-radius: 50%;
     
@@ -106,7 +106,7 @@ body {
 
 
 #moon {
-    z-index: -3;
+    z-index: 6;
     border-radius: 50%;
     border-radius: 50%;
     position: absolute;
@@ -143,7 +143,7 @@ body {
 }
 
 .sun-time {
-    z-index: 10;
+    z-index: 16;
     position: absolute;
     color: white;
     text-align: center;
@@ -183,7 +183,7 @@ body {
 }
 
 .navigators {
-    z-index: 3;
+    z-index: 15;
     position: fixed;
     bottom: 0;
     width: 100%;
@@ -261,7 +261,7 @@ body {
 .calendar-btn{
     position:fixed;
     bottom:2vmin;
-    z-index:12;              /* above clock */
+    z-index:15;              /* above clock */
     width:9vmin;height:9vmin;
     border:none;border-radius:50%;
     font-size:5vmin;cursor:pointer;
@@ -275,7 +275,7 @@ body {
   :root {
     /* adjust these to match your UI */
     --calendar-gap:        2vmin;   /* breathing room from edges & button */
-    --nav-strip-height:   11vh;     /* height of your bottom nav row */
+    --nav-strip-height:   11dvh;     /* height of your bottom nav row */
   }
   
   #calendar-wrapper {
@@ -287,11 +287,11 @@ body {
     right:  var(--calendar-gap);
   
     /* ─── width/height never exceed these OR the space to the left/top ─── */
-    max-width:  min(500px, calc(100vw - var(--calendar-gap) * 2));
+    max-width:  min(500px, calc(100dvw - var(--calendar-gap) * 2));
     max-height: min(
                   500px,
                   calc(
-                    100vh
+                    100dvh
                     - (var(--nav-strip-height) + var(--calendar-gap) * 1.5)
                     - var(--calendar-gap)
                   )
