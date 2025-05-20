@@ -4,7 +4,7 @@ import * as hcal from 'https://cdn.jsdelivr.net/npm/@hebcal/core@5.5.0/+esm';
 import * as jDate from 'https://cdn.jsdelivr.net/npm/jewish-date@2.0.12/+esm';
 import { point, booleanPointInPolygon } from 'https://cdn.jsdelivr.net/npm/@turf/turf@7.1.0/+esm';
 
- 
+
 // Get the clock hand element
 const singleHand = document.querySelector('.single-hand');
 
@@ -332,7 +332,8 @@ function placeSunTimes() {
     if(elementTime - newTime != 0){
       return true;
     }
-    if(element.style.color == 'grey' && date < elementTime){
+
+    if(getComputedStyle(element).color === String.raw`rgb(72, 72, 72)` && date < elementTime){
       return true;
     }
     if(element.style.color == 'yellow' && !(elementTime > date && elementTime - date < 600000)){
@@ -436,7 +437,7 @@ function placeSunTimes() {
     // Color coding based on time
     let color;
     if (time < date) {
-      color = 'grey'; // Grey for passed times
+      color = `rgb(72,72,72)`; // Grey for passed times
     } else if (time - date < 600000) { // 10 minutes in milliseconds
       color = 'yellow'; // Yellow for upcoming times
     } else {
