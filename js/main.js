@@ -23,7 +23,7 @@ import {
   getTimeAccelerationFactor
 } from './scene.js';
 import { fetchWeather, weatherState } from './weather.js';
-import { initLocation, locationState, getTimezoneForLocation } from './location.js';
+import { initLocation, locationState, getTimezoneForLocation } from './Location.js';
 
 // ============================================================================
 // Israel Detection (GeoJSON)
