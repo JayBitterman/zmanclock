@@ -1,7 +1,3 @@
-// ============================================================================
-// ui.js - UI display and update functions
-// ============================================================================
-
 import { state } from './config.js';
 import { calculateSeasonalTime, Astronomy } from './astronomy.js';
 import { 
@@ -50,7 +46,11 @@ export function setDigitalTimes() {
     hour12: true,
     timeZone: tz
   });
-  digitalTimeHolder.textContent = timeString;
+  
+  // OPTIMIZATION: Only update DOM if text changed
+  if (digitalTimeHolder.textContent !== timeString) {
+    digitalTimeHolder.textContent = timeString;
+  }
     
   // Seasonal time
   const { isDay, totalSeasonalMinutes } = calculateSeasonalTime();
@@ -61,7 +61,11 @@ export function setDigitalTimes() {
   const totalChalakim = Math.floor(fractionalMinute * 18);
   
   const stimeString = `${seasonalHour}:${seasonalMinute.toString().padStart(2, '0')}:${totalChalakim.toString().padStart(2, '0')} ${isDay ? 'ביום' : 'בלילה'}`;
-  sDigitalTimeHolder.textContent = stimeString;
+  
+  // OPTIMIZATION: Only update DOM if text changed
+  if (sDigitalTimeHolder.textContent !== stimeString) {
+    sDigitalTimeHolder.textContent = stimeString;
+  }
 }
 
 // ui.js
@@ -117,7 +121,10 @@ export function setDate(inIsraelFn) {
   } else {
     displayDow = currentDayName;
   }
-  dowHolder.textContent = displayDow;
+  
+  if (dowHolder.textContent !== displayDow) {
+    dowHolder.textContent = displayDow;
+  }
   
   // 3. Format Date String (MM/DD/YYYY) in target timezone
   const datePartsFormatter = new Intl.DateTimeFormat('en-US', {
@@ -128,11 +135,16 @@ export function setDate(inIsraelFn) {
   // --- FIX END ---
   
   // Hebrew date text
-  dateHolder.textContent = getHebrewDateString();
+  const hDateStr = getHebrewDateString();
+  if (dateHolder.textContent !== hDateStr) {
+    dateHolder.textContent = hDateStr;
+  }
   
   // Omer count
-  const omer = getOmerCount();
-  omerHolder.textContent = omer || "";
+  const omer = getOmerCount() || "";
+  if (omerHolder.textContent !== omer) {
+    omerHolder.textContent = omer;
+  }
   
   // Handle candle lighting
   // We use the HDate's greg() function to compare dates, but we must ensure we compare apples to apples
@@ -161,19 +173,21 @@ export function setDate(inIsraelFn) {
   }
   
   // Holidays
-  holidayHolder.innerHTML = "";
+  // Only update if holidays changed to avoid DOM thrashing
   const holidays = getHolidays(inIsrael);
+  const sedra = getSedra(inIsrael);
   
+  // Quick check if we need to update
+  // We construct the HTML string and compare it
+  let newHtml = '';
   for (const holidayText of holidays) {
-    const holidayInstance = document.createElement('div');
-    holidayInstance.textContent = holidayText;
-    holidayHolder.appendChild(holidayInstance);
+    newHtml += `<div>${holidayText}</div>`;
   }
+  newHtml += `<div>${sedra}</div>`;
   
-  // Weekly Sedra
-  const sedraInstance = document.createElement('div');
-  sedraInstance.textContent = getSedra(inIsrael);
-  holidayHolder.appendChild(sedraInstance);
+  if (holidayHolder.innerHTML !== newHtml) {
+    holidayHolder.innerHTML = newHtml;
+  }
 }
 
 export function setAtmosphere() {

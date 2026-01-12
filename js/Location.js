@@ -8,8 +8,6 @@ import { processWeatherData } from './weather.js';
 
 // Location state
 export const locationState = {
-  originalLat: null,
-  originalLon: null,
   customLat: null,
   customLon: null,
   isCustomLocation: false,
@@ -73,14 +71,6 @@ export function initLocation() {
 }
 
 /**
- * Store the original GPS location for reset functionality
- */
-export function setOriginalLocation(lat, lon) {
-  locationState.originalLat = lat;
-  locationState.originalLon = lon;
-}
-
-/**
  * Setup location button toggle
  */
 function setupLocationButton() {
@@ -131,8 +121,8 @@ async function initMap() {
     mapContainer.innerHTML = '';
     
     // Use current location or default
-    const lat = state.latitude || locationState.originalLat || 31.7769;
-    const lon = state.longitude || locationState.originalLon || 35.2224;
+    const lat = state.latitude || 31.7769; 
+    const lon = state.longitude || 35.2224;
     
     // Create map with enhanced zoom
     locationState.map = L.map('location-map', {
@@ -425,43 +415,40 @@ function setupCitySearch() {
 }
 
 /**
- * Setup reset button
+ * Setup reset button - Fetches fresh current location
  */
 function setupResetButton() {
   const btn = document.getElementById('location-reset-btn');
   if (!btn) return;
   
-  btn.addEventListener('click', async () => {
-    if (locationState.originalLat && locationState.originalLon) {
-      // Reset to original GPS location
-      state.latitude = locationState.originalLat;
-      state.longitude = locationState.originalLon;
-      locationState.isCustomLocation = false;
-      locationState.customLat = null;
-      locationState.customLon = null;
-      locationState.timezone = null;
-      
-      // Update map marker if map exists
-      if (locationState.map && locationState.marker) {
-        locationState.marker.setLatLng([locationState.originalLat, locationState.originalLon]);
-        locationState.map.setView([locationState.originalLat, locationState.originalLon], 10);
-        updateMapCoords(locationState.originalLat, locationState.originalLon);
-      }
-      
-      // Update location button indicator
-      updateLocationIndicator(false);
-      
-      // Dispatch event for main.js to handle
-      window.dispatchEvent(new CustomEvent('locationChanged', {
-        detail: {
-          lat: locationState.originalLat,
-          lon: locationState.originalLon,
-          isCustom: false
-        }
-      }));
-      
-      closeLocationPopup();
+  btn.addEventListener('click', () => {
+    // Show loading overlay
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      if (overlay) overlay.style.display = 'none';
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        // Apply this location, but mark isCustom as FALSE (this is the "Auto" location)
+        await applyCustomLocation(lat, lon, false);
+        
+        closeLocationPopup();
+      },
+      (err) => {
+        console.error("Error resetting location:", err);
+        alert("Could not retrieve current location. Please check permissions.");
+        if (overlay) overlay.style.display = 'none';
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 } // maximumAge: 0 forces fresh result
+    );
   });
 }
 
@@ -506,9 +493,12 @@ function closeLocationPopup() {
 }
 
 /**
- * Apply custom location
+ * Apply location (Custom or Auto-Reset)
+ * @param {number} lat 
+ * @param {number} lon 
+ * @param {boolean} isCustom - true for manual search, false for auto-detect/reset
  */
-async function applyCustomLocation(lat, lon) {  
+async function applyCustomLocation(lat, lon, isCustom = true) {  
   // Store previous state for rollback on error
   const prevLat = state.latitude;
   const prevLon = state.longitude;
@@ -529,22 +519,31 @@ async function applyCustomLocation(lat, lon) {
     state.latitude = lat;
     state.longitude = lon;
     state.timezone = tz;
-    locationState.customLat = lat;
-    locationState.customLon = lon;
-    locationState.isCustomLocation = true;
+    
+    // Only set custom state if this is explicitly a custom search
+    if (isCustom) {
+      locationState.customLat = lat;
+      locationState.customLon = lon;
+    } else {
+      locationState.customLat = null;
+      locationState.customLon = null;
+    }
+    
+    locationState.isCustomLocation = isCustom;
     locationState.timezone = tz;
     
     // 3. Update map marker
     if (locationState.map && locationState.marker) {
       locationState.marker.setLatLng([lat, lon]);
       locationState.map.setView([lat, lon], 10);
+      updateMapCoords(lat, lon); // Update the text display too
     }
     
-    updateLocationIndicator(true);
+    updateLocationIndicator(isCustom);
     
     // 4. Dispatch event with all data - main.js handles the rest
     window.dispatchEvent(new CustomEvent('locationChanged', {
-      detail: { lat, lon, isCustom: true, timezone: tz }
+      detail: { lat, lon, isCustom, timezone: tz }
     }));
     
   } catch (err) {
@@ -566,7 +565,8 @@ async function applyCustomLocation(lat, lon) {
     }
     
     updateLocationIndicator(prevIsCustom);
-    
+    alert("Failed to update location data. Please check connection.");
+  } finally {
     // Hide overlay
     if (overlay) overlay.style.display = 'none';
   }

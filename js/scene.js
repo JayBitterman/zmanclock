@@ -407,8 +407,12 @@ export function trySpawnBird() {
     // Randomly decide direction: 50% chance to fly left
     const flyLeft = Math.random() < 0.5;
 
+    // Preserve the specific variant class (e.g., bird-container-one)
+    const variantClass = Array.from(bird.classList).find(c => c.startsWith('bird-container-'))
+
     // RESET CLASSES completely before adding new ones
-    bird.className = 'bird-container'; 
+    bird.className = 'bird-container';
+    if (variantClass) bird.classList.add(variantClass);
     
     // Force reflow to restart animation
     void bird.offsetWidth;
@@ -432,13 +436,24 @@ export function updateBirdVisibility() {
 
 /**
  * 5. INITIALIZE WEATHER EFFECTS
+ * FIXED: Don't pre-create rain/snow elements - create them on-demand only when needed
+ * This saves ~260 DOM elements when weather is clear (which is most of the time)
  */
+
+// Track whether precipitation elements have been created
+let rainElementsCreated = false;
+let snowElementsCreated = false;
+
 export function initWeatherEffects() {
   const container = document.getElementById('weather-effects');
   if (!container) return;
   
   // Clear existing
   container.innerHTML = '';
+  
+  // Reset creation flags
+  rainElementsCreated = false;
+  snowElementsCreated = false;
   
   // Add cloud container
   let cloudContainer = document.getElementById('cloud-container');
@@ -453,31 +468,58 @@ export function initWeatherEffects() {
   fogLayer.classList.add('fog-layer');
   container.appendChild(fogLayer);
   
-  // Add rain container
+  // Add rain container (empty - elements created on-demand)
   const rainContainer = document.createElement('div');
   rainContainer.classList.add('rain-container');
   container.appendChild(rainContainer);
   
-  /// Pre-create raindrops - more drops for better coverage
+  // Add snow container (empty - elements created on-demand)
+  const snowContainer = document.createElement('div');
+  snowContainer.classList.add('snow-container');
+  container.appendChild(snowContainer);
+  
+  // Add lightning element
+  const lightning = document.createElement('div');
+  lightning.classList.add('lightning');
+  lightning.id = 'lightning';
+  container.appendChild(lightning);
+}
+
+/**
+ * Create rain elements on-demand when it starts raining
+ */
+function ensureRainElements() {
+  if (rainElementsCreated) return;
+  
+  const rainContainer = document.querySelector('.rain-container');
+  if (!rainContainer) return;
+  
+  // Create raindrops only when needed
   for (let i = 0; i < 200; i++) {
     const drop = document.createElement('div');
     drop.classList.add('raindrop');
     drop.style.left = `${Math.random() * 100}%`;
     drop.style.animationDuration = `${0.4 + Math.random() * 0.4}s`;
     drop.style.animationDelay = `${Math.random() * 2}s`;
-    // Vary the size slightly
     const scale = 0.7 + Math.random() * 0.6;
     drop.style.transform = `scaleY(${scale})`;
     drop.style.opacity = 0.6 + Math.random() * 0.4;
     rainContainer.appendChild(drop);
   }
   
-  // Add snow container
-  const snowContainer = document.createElement('div');
-  snowContainer.classList.add('snow-container');
-  container.appendChild(snowContainer);
+  rainElementsCreated = true;
+}
+
+/**
+ * Create snow elements on-demand when it starts snowing
+ */
+function ensureSnowElements() {
+  if (snowElementsCreated) return;
   
-  // Pre-create snowflakes
+  const snowContainer = document.querySelector('.snow-container');
+  if (!snowContainer) return;
+  
+  // Create snowflakes only when needed
   for (let i = 0; i < 60; i++) {
     const flake = document.createElement('div');
     flake.classList.add('snowflake');
@@ -490,12 +532,9 @@ export function initWeatherEffects() {
     snowContainer.appendChild(flake);
   }
   
-  // Add lightning element
-  const lightning = document.createElement('div');
-  lightning.classList.add('lightning');
-  lightning.id = 'lightning';
-  container.appendChild(lightning);
+  snowElementsCreated = true;
 }
+
 // Cloud observer for detecting when clouds exit screen
 let cloudObserver = null;
 
@@ -556,6 +595,10 @@ export function cleanupClouds() {
     cloudRespawnTimeout = null;
   }
   
+  // Cancel any pending spawn timeouts
+  pendingSpawnTimeouts.forEach(id => clearTimeout(id));
+  pendingSpawnTimeouts = [];
+  
   const cloudContainer = document.getElementById('cloud-container');
   if (cloudContainer && cloudObserver) {
     // Unobserve all clouds before clearing
@@ -566,9 +609,12 @@ export function cleanupClouds() {
   }
 }
 
+// Track pending spawn timeouts so they can be cancelled
+let pendingSpawnTimeouts = [];
+
 /**
  * Spawn replacement clouds (enters from upwind edge)
- * FIXED: Added throttling and cap to prevent memory issues during time acceleration
+ * FIXED: Track setTimeout IDs to prevent accumulation during rapid navigation
  */
 function spawnReplacementCloud() {
   const cloudContainer = document.getElementById('cloud-container');
@@ -614,7 +660,11 @@ function spawnReplacementCloud() {
   
   for (let i = 0; i < maxToSpawn; i++) {
     // Small delay between spawns for more natural appearance
-    setTimeout(() => {
+    // Track the timeout so it can be cancelled if needed
+    const timeoutId = setTimeout(() => {
+      // Remove from pending list
+      pendingSpawnTimeouts = pendingSpawnTimeouts.filter(id => id !== timeoutId);
+      
       // Double-check cap before each spawn (in case many are queued)
       const count = cloudContainer.querySelectorAll('.cloud').length;
       if (count >= MAX_CLOUDS) return;
@@ -623,7 +673,18 @@ function spawnReplacementCloud() {
       cloudContainer.appendChild(cloud);
       observer.observe(cloud);
     }, i * 200);
+    
+    pendingSpawnTimeouts.push(timeoutId);
   }
+}
+
+/**
+ * Cancel all pending cloud spawn timeouts
+ * Called when navigating rapidly or cleaning up
+ */
+export function cancelPendingCloudSpawns() {
+  pendingSpawnTimeouts.forEach(id => clearTimeout(id));
+  pendingSpawnTimeouts = [];
 }
 
 /**
@@ -886,6 +947,11 @@ export function updateWeatherEffects(sunElevation = null) {
   }
   root.style.setProperty('--rain-opacity', rainOpacity);
   
+  // Create rain elements on-demand if it's raining
+  if (rainOpacity > 0) {
+    ensureRainElements();
+  }
+  
   // Snow opacity
   let snowOpacity = 0;
   if (condition === 'snow') {
@@ -893,6 +959,11 @@ export function updateWeatherEffects(sunElevation = null) {
                   precipIntensity === 2 ? 0.7 : 0.4;
   }
   root.style.setProperty('--snow-opacity', snowOpacity);
+  
+  // Create snow elements on-demand if it's snowing
+  if (snowOpacity > 0) {
+    ensureSnowElements();
+  }
   
   // Fog opacity
   let fogOpacity = 0;

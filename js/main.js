@@ -21,7 +21,9 @@ import {
   initBirds,
   startPeriodicCleanup,
   stopPeriodicCleanup,
-  getTimeAccelerationFactor
+  getTimeAccelerationFactor,
+  cancelPendingCloudSpawns,
+  cleanupClouds
 } from './scene.js';
 import { fetchWeather, weatherState } from './weather.js';
 import { initLocation, locationState, getTimezoneForLocation } from './location.js';
@@ -124,13 +126,7 @@ function getLocation() {
   const onSuccess = (position) => {
     state.latitude = position.coords.latitude;
     state.longitude = position.coords.longitude;
-    
-    // Store original location for reset
-    if (!locationState.originalLat) {
-      locationState.originalLat = state.latitude;
-      locationState.originalLon = state.longitude;
-    }
-    
+        
     startClockLoop();
   };
 
@@ -185,6 +181,9 @@ function changeDay(direction) {
   updateResetButton();
 }
 
+// Debounce timer for day button clicks
+let dayButtonDebounceTimer = null;
+
 function setupDayButtons() {
   // New button IDs
   const dayBtns = [
@@ -193,14 +192,28 @@ function setupDayButtons() {
     { id: 'btn-reset', change: 0 }
   ];
   
+  const handleDayButtonClick = (change) => {
+    changeDay(change);
+    
+    // Clear existing debounce timer
+    if (dayButtonDebounceTimer) {
+      clearTimeout(dayButtonDebounceTimer);
+      // Cancel pending cloud spawns on rapid navigation
+      cancelPendingCloudSpawns();
+    }
+    
+    // Debounce the heavy work - wait 80ms of no clicks before full update
+    dayButtonDebounceTimer = setTimeout(() => {
+      dayButtonDebounceTimer = null;
+      document.getElementById("sun-times").innerHTML = '';
+      updateClock();
+    }, 80);
+  };
+  
   dayBtns.forEach(button => {
     const btn = document.getElementById(button.id);
     if (btn) {
-      btn.addEventListener('click', () => {
-        changeDay(button.change);
-        document.getElementById("sun-times").innerHTML = '';
-        updateClock();
-      });
+      btn.addEventListener('click', () => handleDayButtonClick(button.change));
     }
   });
   
@@ -208,11 +221,7 @@ function setupDayButtons() {
   DAY_BUTTONS.forEach(button => {
     const btn = document.getElementById(button.id);
     if (btn) {
-      btn.addEventListener('click', () => {
-        changeDay(button.change);
-        document.getElementById("sun-times").innerHTML = '';
-        updateClock();
-      });
+      btn.addEventListener('click', () => handleDayButtonClick(button.change));
     }
   });
 }
@@ -417,6 +426,9 @@ function setupCalendarEvents() {
     });
   }
   
+  // Debounce timer for calendar date selection
+  let calendarDebounceTimer = null;
+  
   // Listen for calendar date selection
   window.addEventListener('calendarDateSelected', (e) => {
     const { gDate } = e.detail;
@@ -436,16 +448,29 @@ function setupCalendarEvents() {
     state.speedMultiplier = 0;
     state.offset = 0;
     
-    // Set the day offset
+    // Set the day offset immediately for responsive feel
     state.daysAhead = diffDays;
     
-    // Clear and rebuild sun times display
-    document.getElementById("sun-times").innerHTML = '';
+    // Clear existing debounce timer
+    if (calendarDebounceTimer) {
+      clearTimeout(calendarDebounceTimer);
+      // Cancel pending cloud spawns on rapid navigation to prevent memory buildup
+      cancelPendingCloudSpawns();
+    }
     
-    // Update the clock
-    updateClock();
-    updateResetButton();
-    updateSpeedIndicator();
+    // Debounce the heavy work - wait 100ms of no clicks before full update
+    // This prevents memory accumulation during rapid clicking
+    calendarDebounceTimer = setTimeout(() => {
+      calendarDebounceTimer = null;
+      
+      // Clear and rebuild sun times display
+      document.getElementById("sun-times").innerHTML = '';
+      
+      // Update the clock
+      updateClock();
+      updateResetButton();
+      updateSpeedIndicator();
+    }, 100);
     
     // Don't close calendar - allow user to click through multiple days
   });

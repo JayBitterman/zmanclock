@@ -1,9 +1,6 @@
-// ============================================================================
-// clock.js - Clock face, hand, sun, and moon rendering
-// ============================================================================
-
 import { state, HOURS } from './config.js';
-import { calculateSeasonalTime, calculateMoonData, ZMAN_DISPLAY_NAMES, getZmanDisplayName } from './astronomy.js';
+import { calculateSeasonalTime, calculateMoonData, ZMAN_DISPLAY_NAMES } from './astronomy.js';
+import { getHolidays } from './hebrew.js';
 
 /**
  * Positions the clock numbers around the clock face
@@ -198,10 +195,9 @@ function renderMoon(holderNode, R, phase, waning) {
 
 /**
  * Places sun times around the clock face
+ * OPTIMIZED: Reuse existing elements instead of destroying/creating
  */
 export function placeSunTimes() {
-  // If we don't have coordinates or calculated times, stop immediately 
-  // to prevent elements from jumping
   if (state.latitude === null || !state.sunTimes || !state.sunTimes.sunrise || isNaN(state.sunTimes.sunrise.getTime())) {
     return;
   }
@@ -218,56 +214,83 @@ export function placeSunTimes() {
   const tomorrowSunrise = state.sunTimes.nextSunrise;
   const yesterdaySunset = state.sunTimes.prevSunset;
   
+  // Minor Fast Day Detection
+  const holidays = getHolidays(false); 
+  const minorFasts = ["צום גדליה", "עשרה בטבת", "תענית אסתר", "שבעה עשר בתמוז", "י\"ז בתמוז", "תענית בכורות"];
+  const isFastDay = holidays.some(h => minorFasts.some(fast => h.includes(fast)));
+
   for (const [name, time] of Object.entries(state.sunTimes)) {
-    if (name === "prevSunset" || name === "nextSunrise") continue;
+    if (name === "prevSunset" || name === "nextSunrise" || !time) continue;
     
-    // Check if element needs update
-    const existingEl = document.getElementById(name);
-    if (existingEl && !timeNeedsUpdate(existingEl, time)) continue;
-    if (existingEl) existingEl.remove();
+    const timeMs = time.getTime();
+    let sunTimeElement = document.getElementById(name);
     
-    // Create element
-    const sunTimeElement = document.createElement('div');
-    sunTimeElement.setAttribute("id", name);
-    sunTimeElement.classList.add('sun-time');
-    sunTimeElement.style.display = "grid";
-    sunTimeElement.style.alignItems = "center";
-    sunTimeElement.setAttribute("time", time.getTime());
+    // Check if we need to full update (text/pos) or just color
+    // If element exists and time is same, we only update color (fast)
+    let needsPosUpdate = true;
+    
+    if (!sunTimeElement) {
+      // Create new element
+      sunTimeElement = document.createElement('div');
+      sunTimeElement.setAttribute("id", name);
+      sunTimeElement.classList.add('sun-time');
+      sunTimeElement.style.display = "grid";
+      sunTimeElement.style.alignItems = "center";
+      sunTimeElement.style.whiteSpace = "nowrap";
+      sunTimesContainer.appendChild(sunTimeElement);
+    } else {
+      const prevTime = parseInt(sunTimeElement.getAttribute("time") || "0");
+      if (prevTime === timeMs) {
+        needsPosUpdate = false;
+      }
+    }
+
+    // Always check color (cheap)
+    // Color coding
+    let color;
+    if (time < state.date) {
+      color = `rgb(72,72,72)`;
+    } else if (time - state.date < 600000) {
+      color = 'yellow';
+    } else {
+      color = 'white';
+    }
+    
+    if (sunTimeElement.style.color !== color) {
+      sunTimeElement.style.color = color;
+    }
+
+    // If time hasn't changed, skip DOM layout calculations
+    if (!needsPosUpdate) continue;
+
+    // UPDATE CONTENT & POSITION
+    sunTimeElement.setAttribute("time", timeMs);
     
     const options = { hour: 'numeric', minute: '2-digit', second: '2-digit' };
     if (state.timezone) {
       options.timeZone = state.timezone;
     }
-    const formatOptions = { hour: 'numeric', minute: '2-digit', second: '2-digit' };
-    if (state.timezone) {
-      formatOptions.timeZone = state.timezone;
+    const timeStr = time.toLocaleTimeString([], options);  
+    
+    // Get display name (Hebrew) for this zman
+    let displayName = ZMAN_DISPLAY_NAMES[name] || name;
+    
+    // Append Fast Start/End labels
+    if (isFastDay) {
+      if (name === 'alos') displayName += " / תחילת הצום";
+      if (name === 'tzeis') displayName += " / סוף הצום";
     }
-    const timeStr = time.toLocaleTimeString([], formatOptions);  
-    
-    // Get display name (Hebrew) for this zman, with special day modifications
-    const displayName = getZmanDisplayName(name);
-    
+
+    // Update Text Content
     if (name !== "sunset" && name !== "sunrise") {
-      if (["tzeis", "rTam", "alos", "misheyakir", "🕯️🕯️"].includes(name)) {
-        sunTimeElement.textContent = timeStr + " " + displayName;
-        sunTimeElement.style.whiteSpace = "nowrap";
-      } else {
-        const nameElement = document.createElement('div');
-        nameElement.style.whiteSpace = "nowrap";
-        nameElement.textContent = displayName;
-        sunTimeElement.appendChild(nameElement);
-        
-        const timeElement = document.createElement('div');
-        timeElement.style.whiteSpace = "nowrap";
-        timeElement.textContent = timeStr;
-        sunTimeElement.appendChild(timeElement);
-      }
+       if (["tzeis", "rTam", "alos", "misheyakir", "🕯️🕯️", "biurChametz"].includes(name)) {
+         sunTimeElement.textContent = timeStr + " " + displayName;
+       } else {
+         sunTimeElement.innerHTML = `<div>${displayName}</div><div>${timeStr}</div>`;
+       }
     } else {
-      sunTimeElement.textContent = timeStr;
-      sunTimeElement.style.whiteSpace = "nowrap";
+       sunTimeElement.textContent = timeStr;
     }
-    
-    sunTimesContainer.appendChild(sunTimeElement);
     
     // Calculate position angle
     let theta;
@@ -288,6 +311,11 @@ export function placeSunTimes() {
     const radians = theta * Math.PI / 180;
     let x = Math.cos(radians) * radius;
     let y = Math.sin(radians) * radius;
+    
+    // Offset correction for element size (approximate center)
+    // We use a fixed offset here or dynamic if element is rendered. 
+    // Since we appended it, offsetWidth is available.
+    
     let xShift = sunTimeElement.offsetWidth / 1.4 * Math.cos(theta * Math.PI / 180);
     let yShift = sunTimeElement.offsetHeight * Math.sin(theta * Math.PI / 180);
     
@@ -306,31 +334,5 @@ export function placeSunTimes() {
     sunTimeElement.style.left = `${50 + (x / clockRadius) * 50}%`;
     sunTimeElement.style.top = `${50 + (y / clockRadius) * 50}%`;
     sunTimeElement.style.transform = `translate(-50%, -50%)`;
-    
-    // Color coding
-    let color;
-    if (time < state.date) {
-      color = `rgb(72,72,72)`;
-    } else if (time - state.date < 600000) {
-      color = 'yellow';
-    } else {
-      color = 'white';
-    }
-    sunTimeElement.style.color = color;
   }
-}
-
-/**
- * Checks if a sun time element needs updating
- */
-function timeNeedsUpdate(element, newTime) {
-  const elementTime = new Date(parseInt(element.getAttribute("time"), 10));
-  if (elementTime - newTime !== 0) return true;
-  
-  const style = getComputedStyle(element);
-  if (style.color === 'rgb(72, 72, 72)' && state.date < elementTime) return true;
-  if (element.style.color === 'yellow' && !(elementTime > state.date && elementTime - state.date < 600000)) return true;
-  if (element.style.color === 'white' && state.date > elementTime - 600000) return true;
-  
-  return false;
 }
