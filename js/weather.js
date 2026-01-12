@@ -74,18 +74,18 @@ export function processWeatherData(data) {
   weatherState.error = null;
 
   // --- NEW LOGGING CODE START ---
-    console.group('🌤️ Open-Meteo Weather Data');
-    console.log(`📍 Timezone:     ${data.timezone} (${data.timezone_abbreviation})`);
-    console.log(`🌡️ Temp:         ${weatherState.temperature}°C (Feels like ${weatherState.feelsLike}°C)`);
-    console.log(`☂️ Precip:       ${weatherState.precipitation} mm/h`);
-    console.log(`❄️ Snow:         ${weatherState.snowfall} cm/h`);
-    console.log(`☁️ Cloud Cover:  ${weatherState.cloudCover}%`);
-    console.log(`💨 Wind:         ${weatherState.windSpeed} km/h (Dir: ${weatherState.windDirection}°)`);
-    console.log(`🌪️ Gusts:        ${current.wind_gusts_10m} km/h`);
-    console.log(`💧 Humidity:     ${current.relative_humidity_2m}%`);
-    console.log(`📝 Code:         ${weatherState.weatherCode} (isDay: ${weatherState.isDay})`);
-    console.log(`⌚ Offset:       ${data.utc_offset_seconds}s`);
-    console.groupEnd();
+    // console.group('🌤️ Open-Meteo Weather Data');
+    // console.log(`📍 Timezone:     ${data.timezone} (${data.timezone_abbreviation})`);
+    // console.log(`🌡️ Temp:         ${weatherState.temperature}°C (Feels like ${weatherState.feelsLike}°C)`);
+    // console.log(`☂️ Precip:       ${weatherState.precipitation} mm/h`);
+    // console.log(`❄️ Snow:         ${weatherState.snowfall} cm/h`);
+    // console.log(`☁️ Cloud Cover:  ${weatherState.cloudCover}%`);
+    // console.log(`💨 Wind:         ${weatherState.windSpeed} km/h (Dir: ${weatherState.windDirection}°)`);
+    // console.log(`🌪️ Gusts:        ${current.wind_gusts_10m} km/h`);
+    // console.log(`💧 Humidity:     ${current.relative_humidity_2m}%`);
+    // console.log(`📝 Code:         ${weatherState.weatherCode} (isDay: ${weatherState.isDay})`);
+    // console.log(`⌚ Offset:       ${data.utc_offset_seconds}s`);
+    // console.groupEnd();
     // --- NEW LOGGING CODE END ---
   
   // Return for chaining
@@ -137,10 +137,7 @@ export async function fetchWeather(force = false) {
     }
 
     const data = await response.json();
-    
-    // Log the raw API response
-    // console.log('Weather: Raw API Response:', JSON.stringify(data, null, 2));
-    
+        
     // Use the shared processor
     processWeatherData(data);
     

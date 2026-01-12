@@ -117,21 +117,102 @@ export function calcSunTimes(latitude, longitude) {
   state.sunTimes = {
     'sunrise': sunrise.date,
     'sunset': sunset.date,
-    'עלות': dawn.date,
-    'ציצית': mshyaker?.date || dawn.date,
-    'צאת': tzeis?.date || sunset.date,
-    'חצות היום': midday,
-    "ר' תם": rTam,
-    'פלג המנחה': addTime(sunrise.date, 10.75 * dayHourMs),
-    'מנחה קטנה': addTime(sunrise.date, 9.5 * dayHourMs),
-    'מנחה גדולה': addTime(midday, Math.max(0.5 * 60 * 60 * 1000, dayHourMs / 2)),
-    'שמע גר"א': addTime(sunrise.date, 3 * dayHourMs),
-    'תפילה גר"א': addTime(sunrise.date, 4 * dayHourMs),
-    'שמע מג"א': addTime(dawn.date, 3 * mgaDayHourMs),
-    'חצות הלילה': midnight,
+    'alos': dawn.date,
+    'misheyakir': mshyaker?.date || dawn.date,
+    'tzeis': tzeis?.date || sunset.date,
+    'chatzos': midday,
+    'rTam': rTam,
+    'plagHamincha': addTime(sunrise.date, 10.75 * dayHourMs),
+    'minchaKetana': addTime(sunrise.date, 9.5 * dayHourMs),
+    'minchaGedola': addTime(midday, Math.max(0.5 * 60 * 60 * 1000, dayHourMs / 2)),
+    'shemaGra': addTime(sunrise.date, 3 * dayHourMs),
+    'tefilaGra': addTime(sunrise.date, 4 * dayHourMs),
+    'shemaMga': addTime(dawn.date, 3 * mgaDayHourMs),
+    'chatzosLayla': midnight,
     'prevSunset': prevSunset.date,
     'nextSunrise': nextSunrise.date
   };
+}
+
+// Hebrew display names for zmanim (mapped from English keys)
+export const ZMAN_DISPLAY_NAMES = {
+  'alos': 'עלות',
+  'misheyakir': 'ציצית', 
+  'tzeis': 'צאת',
+  'chatzos': 'חצות היום',
+  'rTam': "ר' תם",
+  'plagHamincha': 'פלג המנחה',
+  'minchaKetana': 'מנחה קטנה',
+  'minchaGedola': 'מנחה גדולה',
+  'shemaGra': 'שמע גר"א',
+  'tefilaGra': 'תפילה גר"א',
+  'shemaMga': 'שמע מג"א',
+  'chatzosLayla': 'חצות הלילה',
+  'sunrise': 'נץ',
+  'sunset': 'שקיעה',
+  'biurChametz': 'סו"ז ביעור חמץ'
+};
+
+// Track special day status for display name modifications
+export let specialDayStatus = {
+  isMinorFast: false,
+  isErevPesach: false,
+  showBiurChametz: false
+};
+
+/**
+ * Get the display name for a zman, with modifications for special days
+ * @param {string} name - The zman key name
+ * @returns {string} - The Hebrew display name, possibly modified for special days
+ */
+export function getZmanDisplayName(name) {
+  const baseName = ZMAN_DISPLAY_NAMES[name] || name;
+  
+  // For minor fasts, modify alos and tzeis display
+  if (specialDayStatus.isMinorFast) {
+    if (name === 'alos') {
+      return 'עלות / תחילת צום';
+    }
+    if (name === 'tzeis') {
+      return 'צאת / סוף צום';
+    }
+  }
+  
+  return baseName;
+}
+
+/**
+ * Calculates and adds biur chametz time to sunTimes if needed
+ * Biur chametz is at the end of the 5th hour of the day
+ * Should be called after calcSunTimes
+ */
+export function addBiurChametzTime() {
+  // Remove biur chametz if it shouldn't be shown
+  if (!specialDayStatus.showBiurChametz) {
+    if (state.sunTimes && state.sunTimes.biurChametz) {
+      delete state.sunTimes.biurChametz;
+      // Also remove the DOM element if it exists
+      const el = document.getElementById('biurChametz');
+      if (el) el.remove();
+    }
+    return;
+  }
+  
+  if (!state.sunTimes) return;
+  
+  const sunrise = state.sunTimes.sunrise;
+  const sunset = state.sunTimes.sunset;
+  
+  if (!sunrise || !sunset) return;
+  
+  // Calculate day length and hour
+  const dayLengthMs = sunset.getTime() - sunrise.getTime();
+  const dayHourMs = dayLengthMs / 12;
+  
+  // Biur chametz is at the END of the 5th hour (i.e., 5 hours after sunrise)
+  const biurChametzTime = new Date(sunrise.getTime() + 5 * dayHourMs);
+  
+  state.sunTimes.biurChametz = biurChametzTime;
 }
 
 /**

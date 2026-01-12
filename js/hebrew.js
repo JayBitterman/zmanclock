@@ -40,7 +40,8 @@ export function updateHebrewDate(tzeis) {
   const todayHDate = new hcal.HDate(todayAtNoon);
   
   // 3. Determine if we are after Tzeis (conceptually "Tomorrow" in Hebrew)
-  if (state.date < tzeis) {
+  // If tzeis is undefined/null, default to showing today's date
+  if (!tzeis || state.date < tzeis) {
     state.hdate = todayHDate;
   } else {
     // If after tzeis, we simply take the next Hebrew date
@@ -50,41 +51,25 @@ export function updateHebrewDate(tzeis) {
 
 /**
  * Gets formatted Hebrew date string
- * Uses target timezone to determine the correct Gregorian date
+ * Uses state.hdate which is already correctly calculated based on tzeis
  */
 export function getHebrewDateString() {
-  // Get the date components in the TARGET timezone
-  const tz = state.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric'
-  });
-  
-  const parts = formatter.formatToParts(state.date);
-  const getPart = (type) => parseInt(parts.find(p => p.type === type).value, 10);
-  
-  const year = getPart('year');
-  const month = getPart('month');
-  const day = getPart('day');
-  
-  // Create a date at noon in that calendar day (to avoid any edge cases)
-  // This represents "today" in the target timezone
-  const todayGregorian = new Date(year, month - 1, day, 12, 0, 0);
-  
-  // Create "tomorrow" in the target timezone
-  const tomorrowGregorian = new Date(year, month - 1, day + 1, 12, 0, 0);
-  
-  let dateString;
-  if (state.date < state.sunTimes['צאת']) {
-    dateString = jDate.toHebrewJewishDate(jDate.toJewishDate(todayGregorian));
-  } else {
-    dateString = jDate.toHebrewJewishDate(jDate.toJewishDate(tomorrowGregorian));
+  // Use the already-calculated state.hdate instead of recalculating
+  // This ensures consistency with the tzeis-based day boundary
+  if (!state.hdate) {
+    return '';
   }
   
-  return `${dateString.day} ${dateString.monthName} ${dateString.year}`;
+  // state.hdate is an HDate object from @hebcal/core
+  // We can get the Hebrew representation directly from it
+  const hd = state.hdate;
+  
+  // Get the Gregorian date from the HDate and convert using jDate for formatting
+  const gregDate = hd.greg();
+  const jewishDate = jDate.toJewishDate(gregDate);
+  const hebrewDate = jDate.toHebrewJewishDate(jewishDate);
+  
+  return `${hebrewDate.day} ${hebrewDate.monthName} ${hebrewDate.year}`;
 }
 
 /**
@@ -94,7 +79,7 @@ export function getDayOfWeekDisplay() {
   const dow = WEEKDAY[state.date.getDay()];
   const tomorrowDow = WEEKDAY[(state.date.getDay() + 1) % 7];
   
-  if (state.date >= state.sunTimes["צאת"]) {
+  if (state.date >= state.sunTimes["tzeis"]) {
     return tomorrowDow;
   } else if (state.date >= state.sunTimes["sunset"]) {
     return dow + "/" + tomorrowDow;
@@ -220,4 +205,59 @@ export function numberToHebrewNumeral(num) {
   if (num === 31) return tens[3] + units[1];
   
   return num.toString();
+}
+
+/**
+ * Detects special day status for the current Hebrew date
+ * Returns info about minor fasts and erev pesach
+ * @param {boolean} inIsrael - Whether the user is in Israel
+ * @returns {object} - Special day status { isMinorFast, showBiurChametz }
+ */
+export function getSpecialDayStatus(inIsrael) {
+  const status = {
+    isMinorFast: false,
+    showBiurChametz: false
+  };
+  
+  if (!state.hdate) return status;
+  
+  // Get events for today
+  const events = hcal.HebrewCalendar.getHolidaysOnDate(state.hdate);
+  
+  if (events) {
+    for (const e of events) {
+      // Skip holidays not applicable to this location
+      if (inIsrael && e.getFlags() & hcal.flags.CHUL_ONLY) continue;
+      if (!inIsrael && e.getFlags() & hcal.flags.IL_ONLY) continue;
+      
+      // Check for minor fast (MINOR_FAST = 256)
+      // Note: We don't modify for MAJOR_FAST (Yom Kippur, Tisha B'Av)
+      if (e.getFlags() & hcal.flags.MINOR_FAST) {
+        status.isMinorFast = true;
+      }
+    }
+  }
+  
+  // Check for Erev Pesach (14 Nisan)
+  // In @hebcal/core: getMonth() returns 1 for Nisan
+  const month = state.hdate.getMonth();
+  const day = state.hdate.getDate();
+  
+  if (month === 1 && day === 14) {
+    // It's Erev Pesach - show biur chametz
+    status.showBiurChametz = true;
+  }
+  
+  // Check if tomorrow is Erev Pesach and it falls on Shabbos
+  // This means today is 13 Nisan (Friday) and we burn chametz today
+  if (month === 1 && day === 13) {
+    const tomorrow = state.hdate.next();
+    const tomorrowGreg = tomorrow.greg();
+    // Check if tomorrow (14 Nisan) is Shabbos (Saturday = day 6)
+    if (tomorrowGreg.getDay() === 6) {
+      status.showBiurChametz = true;
+    }
+  }
+  
+  return status;
 }

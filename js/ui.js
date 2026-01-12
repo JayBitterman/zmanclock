@@ -72,7 +72,7 @@ export function setDigitalTimes() {
  */
 export function setDate(inIsraelFn) {
   // Update Hebrew date first
-  updateHebrewDate(state.sunTimes['צאת']);
+  updateHebrewDate(state.sunTimes['tzeis']);
   
   const dateHolder = document.getElementById("date");
   const dowHolder = document.getElementById("day-of-week");
@@ -110,7 +110,7 @@ export function setDate(inIsraelFn) {
   
   // 2. Determine display string based on sunset/tzeis
   let displayDow;
-  if (state.date >= state.sunTimes["צאת"]) {
+  if (state.date >= state.sunTimes["tzeis"]) {
     displayDow = nextDayName;
   } else if (state.date >= state.sunTimes["sunset"]) {
     displayDow = currentDayName + "/" + nextDayName;

@@ -4,9 +4,10 @@
 
 import { point, booleanPointInPolygon } from 'https://cdn.jsdelivr.net/npm/@turf/turf@7.1.0/+esm';
 import { state, DAY_BUTTONS, SPEED_BUTTONS } from './config.js';
-import { calcSunTimes } from './astronomy.js';
+import { calcSunTimes, specialDayStatus, addBiurChametzTime } from './astronomy.js';
 import { positionClockNumbers, setClockHand, positionMoon, placeSunTimes } from './clock.js';
 import { setDigitalTimes, setDate, setAtmosphere, updateResetButton } from './ui.js';
+import { getSpecialDayStatus } from './hebrew.js';
 import { initCalendar } from './calendar.js';
 import { 
   generateTerrain, 
@@ -63,12 +64,6 @@ async function silentWeatherUpdate() {
     
     // Update person clothing
     updatePersonClothing();
-    
-    console.log('Weather silently updated:', {
-      temperature: weatherState.temperature,
-      cloudCover: weatherState.cloudCover,
-      condition: weatherState.weatherCode
-    });
   } catch (err) {
     console.warn('Silent weather update failed:', err);
   }
@@ -299,6 +294,8 @@ function setupSpeedButtons() {
 // Toolbar Toggle
 // ============================================================================
 
+// main.js
+
 function setupToolbarToggle() {
   const toggle = document.getElementById('toolbar-toggle');
   const controls = document.getElementById('controls-container');
@@ -315,26 +312,6 @@ function setupToolbarToggle() {
     if (!isOpening) {
       const locationWrapper = document.getElementById('location-wrapper');
       const calendarWrapper = document.getElementById('calendar-wrapper');
-      if (locationWrapper) locationWrapper.style.display = 'none';
-      if (calendarWrapper) calendarWrapper.style.display = 'none';
-    }
-  });
-  
-  // Close toolbar only when clicking outside all UI elements (mousedown, not click)
-  document.addEventListener('mousedown', (e) => {
-    const locationWrapper = document.getElementById('location-wrapper');
-    const calendarWrapper = document.getElementById('calendar-wrapper');
-    
-    // Don't do anything if clicking inside any of these
-    if (toggle.contains(e.target)) return;
-    if (controls.contains(e.target)) return;
-    if (locationWrapper?.contains(e.target)) return;
-    if (calendarWrapper?.contains(e.target)) return;
-    
-    // Only close if visible and clicking truly outside
-    if (controls.classList.contains('visible')) {
-      toggle.classList.remove('active');
-      controls.classList.remove('visible');
       if (locationWrapper) locationWrapper.style.display = 'none';
       if (calendarWrapper) calendarWrapper.style.display = 'none';
     }
@@ -391,6 +368,15 @@ function updateClock() {
   const now = Date.now();
   if (now - lastSlowUpdate > 100) {
     setDate(inIsrael);
+    
+    // Update special day status (minor fasts, erev pesach)
+    const dayStatus = getSpecialDayStatus(inIsrael(state.latitude, state.longitude));
+    specialDayStatus.isMinorFast = dayStatus.isMinorFast;
+    specialDayStatus.showBiurChametz = dayStatus.showBiurChametz;
+    
+    // Add biur chametz time if needed
+    addBiurChametzTime();
+    
     placeSunTimes();
     lastSlowUpdate = now;
   }
@@ -430,6 +416,39 @@ function setupCalendarEvents() {
       }
     });
   }
+  
+  // Listen for calendar date selection
+  window.addEventListener('calendarDateSelected', (e) => {
+    const { gDate } = e.detail;
+    
+    // Calculate how many days ahead/behind from today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const diffMs = gDate.getTime() - today.getTime();
+    const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000));
+    
+    // Reset speed if running
+    if (state.intervalId) {
+      clearInterval(state.intervalId);
+      state.intervalId = null;
+    }
+    state.speedMultiplier = 0;
+    state.offset = 0;
+    
+    // Set the day offset
+    state.daysAhead = diffDays;
+    
+    // Clear and rebuild sun times display
+    document.getElementById("sun-times").innerHTML = '';
+    
+    // Update the clock
+    updateClock();
+    updateResetButton();
+    updateSpeedIndicator();
+    
+    // Don't close calendar - allow user to click through multiple days
+  });
 }
 // ============================================================================
 // Location Change Handler

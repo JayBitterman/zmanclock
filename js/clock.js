@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { state, HOURS } from './config.js';
-import { calculateSeasonalTime, calculateMoonData } from './astronomy.js';
+import { calculateSeasonalTime, calculateMoonData, ZMAN_DISPLAY_NAMES, getZmanDisplayName } from './astronomy.js';
 
 /**
  * Positions the clock numbers around the clock face
@@ -243,14 +243,18 @@ export function placeSunTimes() {
       formatOptions.timeZone = state.timezone;
     }
     const timeStr = time.toLocaleTimeString([], formatOptions);  
+    
+    // Get display name (Hebrew) for this zman, with special day modifications
+    const displayName = getZmanDisplayName(name);
+    
     if (name !== "sunset" && name !== "sunrise") {
-      if (["צאת", "ר' תם", "עלות", "ציצית", "🕯️🕯️"].includes(name)) {
-        sunTimeElement.textContent = timeStr + " " + name;
+      if (["tzeis", "rTam", "alos", "misheyakir", "🕯️🕯️"].includes(name)) {
+        sunTimeElement.textContent = timeStr + " " + displayName;
         sunTimeElement.style.whiteSpace = "nowrap";
       } else {
         const nameElement = document.createElement('div');
         nameElement.style.whiteSpace = "nowrap";
-        nameElement.textContent = name;
+        nameElement.textContent = displayName;
         sunTimeElement.appendChild(nameElement);
         
         const timeElement = document.createElement('div');
@@ -287,12 +291,12 @@ export function placeSunTimes() {
     let xShift = sunTimeElement.offsetWidth / 1.4 * Math.cos(theta * Math.PI / 180);
     let yShift = sunTimeElement.offsetHeight * Math.sin(theta * Math.PI / 180);
     
-    if (name === "מנחה גדולה") {
+    if (name === "minchaGedola") {
       y += sunTimeElement.offsetHeight * Math.sin(theta * Math.PI / 180);
       x += sunTimeElement.offsetWidth * Math.cos(theta * Math.PI / 180);
     }
 
-    if (name === "חצות הלילה") {
+    if (name === "chatzosLayla") {
       y -= sunTimeElement.offsetHeight/2;
     }
     

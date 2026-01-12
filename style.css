@@ -18,9 +18,11 @@
   --clock-bg: rgba(0, 0, 0, 0.2);
   --text-color: white;
   
-  /* UPDATED: Darker, classic hand color */
-  --hand-color: #797575;
-  --hand-highlight: #797575;
+  /* Luxury Clock Hand Colors - Blued Steel Look */
+  --hand-color: #1a1a2e;
+  --hand-highlight: #4a4a6a;
+  --hand-accent: #2d2d44;
+  --hand-shine: rgba(255, 255, 255, 0.4);
 
   /* Dynamic Atmosphere Variables (Updated by JS) */
   --sky-top: #000000;
@@ -139,56 +141,106 @@ body {
     inset 0 0 2vmin rgba(255, 255, 255, 0.05);
 }
 
-/* UPDATED HAND STYLE - Classic 3D Tapered Look */
+/* ============================================================================
+   LUXURY ORNATE CLOCK HAND - Breguet/Patek Philippe Inspired
+   ============================================================================ */
+
+/* Main hand container - establishes the pivot point */
 .hand {
   position: absolute;
   top: 50%;
   right: 50%;
-  width: 48%; /* Slightly shorter than radius to keep inside border */
-  height: 2.5vmin; /* Thicker base for tapered look */
-  margin-top: -1.25vmin; /* Center vertically based on new height */
-  transform-origin: 100% 50%; /* Pivot around the center-right point */
-  
-  /* 3D Ridge Effect: Lighter top half, Darker bottom half */
-  background: linear-gradient(to bottom, 
-    var(--hand-highlight) 0%, 
-    var(--hand-highlight) 50%, 
-    var(--hand-color) 50%, 
-    var(--hand-color) 100%
-  );
-  
-  /* Tapered Shape: Point at left (0%), Base at right (100%) */
-  clip-path: polygon(0 50%, 100% 15%, 100% 85%);
-  
+  width: 46%;
+  height: 0;
+  transform-origin: 100% 50%;
   z-index: 9;
-  
-  /* Smooth transition for movement */
   transition: transform 150ms linear;
-  
-  /* Drop shadow that respects the clip-path shape */
-  filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.6));
 }
 
-/* UPDATED CENTER CAP - Larger, Convex Button Look */
+/* Main hand body - the elegant tapered shaft */
+.hand::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  
+  /* Dimensions */
+  width: 100%;
+  height: 1.8vmin;
+  
+  /* Ornate Breguet-style shape with hollow moon cutout */
+  clip-path: polygon(
+    /* Tip - sharp pointed needle */
+    0% 50%,
+    8% 35%,
+    8% 42%,
+    
+    /* Transition to main body */
+    15% 42%,
+    18% 30%,
+    
+    /* Main shaft upper edge */
+    25% 25%,
+    
+    /* Continue to pivot end */
+    85% 20%,
+    92% 15%,
+    100% 15%,
+    
+    /* Bottom edge - mirror */
+    100% 85%,
+    92% 85%,
+    85% 80%,
+    
+    /* Back to tip */
+    25% 75%,
+    18% 70%,
+    15% 58%,
+    8% 58%,
+    8% 65%
+  );
+  
+  /* Polished blued steel gradient */
+  background: linear-gradient(
+    to bottom,
+    var(--hand-shine) 0%,
+    var(--hand-highlight) 15%,
+    var(--hand-color) 40%,
+    var(--hand-accent) 60%,
+    var(--hand-color) 85%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+}
+
+/* Decorative center arbor (pivot cap) - layered luxury design */
 .hand::after {
   content: '';
   position: absolute;
-  right: -1.5vmin; /* Centered on the pivot point */
+  right: -2vmin;
   top: 50%;
   transform: translateY(-50%);
   width: 3vmin;
   height: 3vmin;
   border-radius: 50%;
   
-  /* Convex 3D Button Effect */
-  background: radial-gradient(circle at 30% 30%, 
-    #5a5a5a 0%, 
-    #2a2a2a 60%, 
-    #000000 100%
-  );
-  
-  box-shadow: 0 0 1vmin rgba(0, 0, 0, 0.8);
-  z-index: 10;
+  /* Multi-layered concentric design */
+  background: 
+    /* Polished dome with highlight */
+    radial-gradient(circle at 35% 35%,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.1) 20%,
+      transparent 50%
+    ),
+    /* Main cap body */
+    radial-gradient(circle at 40% 40%,
+      #666680 0%,
+      #3d3d54 40%,
+      #1a1a2e 70%,
+      #000 100%
+    );
+    
+  z-index: 11;
 }
 
 .clock-number {
@@ -1154,7 +1206,8 @@ body {
 /* Reset button group - positioned on far left */
 .button-group.reset-group {
   position: absolute;
-  left: 2vmin;
+  right: 2.5vmin;
+  bottom: 15vmin;
 }
 
 /* Speed group - relative positioning for speed indicator */

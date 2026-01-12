@@ -637,7 +637,6 @@ export async function getTimezoneForLocation(lat, lon) {
         }
 
         const data = await response.json();
-        console.log("Got Timezone & Weather via Open-Meteo:", data.timezone); 
         
         // PRE-LOAD THE WEATHER STATE!
         // This avoids fetching weather again in main.js

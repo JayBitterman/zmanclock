@@ -852,8 +852,6 @@ function updateCloudCover(forceRegenerate = false) {
     cloudContainer.appendChild(cloud);
     observer.observe(cloud);
   }
-  
-  console.log(`☁️ Clouds: Generated ${targetCount} clouds (cover: ${cloudCover}%, max: ${MAX_CLOUDS})`);
 }
 
 /**
