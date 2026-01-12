@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Zman Clock</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="clock_gradient_icon.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div id="screen">
+        <div id="loading-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; font-family:sans-serif;">
+            <div class="loader" style="width:50px; height:50px; border:5px solid #f3f3f3; border-top:5px solid #3498db; border-radius:50%; animation:spin 1s linear infinite;"></div>
+                <p style="margin-top:20px;">Calculating Zmanim...</p>
+            </div>
+            <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+                
+        <!-- Sky effects layer (stars, birds) -->
+        <div id="sky-effects">
+            <!-- Animated birds -->
+            <div class="bird-container bird-container-one">
+                <div class="bird bird-one"></div>
+            </div>
+            <div class="bird-container bird-container-two">
+                <div class="bird bird-two"></div>
+            </div>
+            <div class="bird-container bird-container-three">
+                <div class="bird bird-three"></div>
+            </div>
+            <div class="bird-container bird-container-four">
+                <div class="bird bird-four"></div>
+            </div>
+        </div>
+        
+        <!-- Weather effects layer (clouds, rain, snow, fog, lightning) -->
+        <div id="weather-effects"></div>
+
+        <!-- Horizon glow -->
+        <div class="horizon-glow"></div>
+
+        <!-- Vegetation layer (trees, bushes) -->
+        <div id="vegetation-layer"></div>
+        
+        <!-- Terrain container -->
+        <div class="terrain-container">
+            <svg id="land-svg" preserveAspectRatio="none" viewBox="0 0 100 100">
+                <path id="land-back" class="land-layer" d="" />
+                <path id="land-mid" class="land-layer" d="" />
+                <path id="land-front" class="land-layer" d="" />
+            </svg>
+        </div>
+
+        <!-- Person silhouette -->
+        <div class="person-wrapper">
+            <div class="person">
+                <div class="head">
+                    <div class="hat"></div>
+                </div>
+                <div class="body"></div>
+                <div class="legs"></div>
+                <div class="shadow"></div>
+            </div>
+        </div>
+
+        <!-- Digital time display (top right) -->
+        <div id="digital-times">
+            <div id="digital-time"></div>
+            <div id="seasonal-time"></div>
+            <div id="day-of-week"></div>
+        </div>
+        
+        <!-- Hebrew date info (top left) -->
+        <div id="week-info">
+            <div id="date"></div>
+            <div id="holiday"></div>
+            <div id="omer"></div>
+            <div id="location-display" style="color: var(--cal-accent); font-size: 2.5vmin; margin-top: 0.5vmin; font-weight: 500; text-shadow: var(--text-shadow);"></div>
+        </div>
+        
+        <!-- Weather info display (hidden) -->
+        <div id="weather-info"></div>
+        
+        <!-- Controls container (hidden by default) -->
+        <div class="controls-container" id="controls-container">
+            <!-- Reset button - separate group on far left -->
+            <div class="button-group reset-group">
+                <button class="control-btn reset-btn" id="btn-reset" title="Reset to now">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+            </div>
+            
+            <!-- Speed controls -->
+            <div class="button-group speed-group">
+                <button class="control-btn" id="btn-speed-back" title="Slow down">
+                    <i class="fa-solid fa-backward"></i>
+                </button>
+                <div class="speed-indicator" id="speed-indicator"></div>
+                <button class="control-btn" id="btn-speed-fwd" title="Speed up">
+                    <i class="fa-solid fa-forward"></i>
+                </button>
+            </div>
+            
+            <!-- Day navigation -->
+            <div class="button-group">
+                <button class="control-btn" id="btn-prev-day" title="Previous day">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button class="control-btn" id="btn-next-day" title="Next day">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+            
+            <!-- Location button (NEW) -->
+            <div class="button-group">
+                <button class="control-btn location-btn" id="btn-location" title="Change Location">
+                    <i class="fa-solid fa-location-dot"></i>
+                </button>
+            </div>
+            
+            <!-- Calendar button -->
+            <div class="button-group">
+                <button class="control-btn calendar-btn" id="btn-calendar" title="Calendar">
+                    <i class="fa-regular fa-calendar"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Toolbar toggle button (sliders icon) -->
+        <button class="toolbar-toggle" id="toolbar-toggle" title="Toggle controls">
+            <i class="fa-solid fa-sliders"></i>
+        </button>
+        
+        <!-- Legacy navigators (hidden via CSS, kept for compatibility) -->
+        <div class="navigators">
+            <div class="day-navigator">
+                <button class="nav-button" id="yesterday"><i class='fa fa-arrow-left'></i></button>
+                <button class="nav-button" id="tomorrow"><i class='fa fa-arrow-right'></i></button>
+            </div>
+            <div class="reset-navigator">
+                <button class="reset-button" id="reset"><i class='fa fa-undo'></i></button>
+            </div>
+            <div class="speed-navigator">
+                <button class="speed-button" id="speed-backward"><i class="fa fa-fast-backward"></i></button>
+                <button class="speed-button" id="speed-forward"><i class="fa fa-fast-forward"></i></button>
+            </div>
+        </div>
+        
+        <!-- Clock -->
+        <div class="clock">
+            <div class="clock-container">
+                <div class="clock-face"></div>
+                <div id="clock-numbers"></div>
+                <div id="sun-times"></div>
+                <div class="hand single-hand"></div>
+                <div id="sun"></div>
+                <div id="moon"></div>
+            </div>
+        </div>
+        
+        <!-- Legacy calendar toggle (hidden via CSS) -->
+        <button id="calendar-toggle" class="calendar-btn">📅</button>
+        
+        <!-- Calendar wrapper -->
+        <div id="calendar-wrapper" style="display:none">
+            <div class="calendar-container">
+                <div class="calendar-type-select">
+                    <label class="type-option">
+                        <input type="radio" id="gregorian" name="calendarType" value="gregorian" checked>
+                        <span>Secular</span>
+                    </label>
+                    <label class="type-option">
+                        <input type="radio" id="hebrew" name="calendarType" value="hebrew">
+                        <span>עברי</span>
+                    </label>
+                </div>
+                <div class="input-section">
+                    <input type="number" id="month-input" placeholder="MM">
+                    <span class="separator">/</span>
+                    <input type="number" id="day-input" placeholder="DD">
+                    <span class="separator">/</span>
+                    <input type="number" id="year-input" placeholder="YYYY">
+                    <button id="go-button">Go</button>
+                </div>
+                <div class="calendar" id="calendar">
+                    <div class="header">
+                        <button id="prev-month">&lt;</button>
+                        <div class="month-year" id="month-year"></div>
+                        <button id="next-month">&gt;</button>
+                    </div>
+                    <div class="weekdays" id="weekdays"></div>
+                    <div class="days-grid" id="days-grid"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Location Picker Popup (NEW) -->
+        <div id="location-wrapper" style="display:none">
+            <div class="location-container">
+                <div class="location-header">
+                    <h3><i class="fa-solid fa-location-dot"></i> Set Location</h3>
+                    <button class="location-reset-btn blue" id="location-reset-btn" title="Reset to current location">
+                        <i class="fa-solid fa-location-crosshairs"></i> Reset
+                    </button>
+                </div>
+                
+                <!-- Tab selector -->
+                <div class="location-tab-select">
+                    <label class="location-tab-option">
+                        <input type="radio" name="locationTab" value="map" checked>
+                        <span><i class="fa-solid fa-map"></i> Map</span>
+                    </label>
+                    <label class="location-tab-option">
+                        <input type="radio" name="locationTab" value="zip">
+                        <span><i class="fa-solid fa-mailbox"></i> Zip Code</span>
+                    </label>
+                    <label class="location-tab-option">
+                        <input type="radio" name="locationTab" value="city">
+                        <span><i class="fa-solid fa-city"></i> City</span>
+                    </label>
+                </div>
+                
+                <!-- Map Tab -->
+                <div id="tab-map" class="location-tab-content active">
+                    <div id="location-map" class="location-map">
+                        <div class="map-loading">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Loading map...
+                        </div>
+                    </div>
+                    <div class="map-footer">
+                        <div class="map-coords" id="map-coords">---, ---</div>
+                        <button class="map-confirm-btn" id="map-confirm-btn">
+                            Set Location
+                        </button>
+                    </div>
+                    <p class="location-hint">Click on the map or drag the marker to select a location</p>
+                </div>
+                
+                <!-- Zip Code Tab -->
+                <div id="tab-zip" class="location-tab-content">
+                    <div class="location-search-row">
+                        <select id="zip-country" class="location-select">
+                            <option value="US">🇺🇸 USA</option>
+                            <option value="IL">🇮🇱 Israel</option>
+                            <option value="CA">🇨🇦 Canada</option>
+                            <option value="GB">🇬🇧 UK</option>
+                            <option value="AU">🇦🇺 Australia</option>
+                            <option value="DE">🇩🇪 Germany</option>
+                            <option value="FR">🇫🇷 France</option>
+                        </select>
+                        <input type="text" id="zip-input" class="location-input" placeholder="Enter zip/postal code">
+                        <button id="zip-search-btn" class="location-search-btn">
+                            <i class="fa-solid fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="zip-result" class="location-result-area"></div>
+                </div>
+                
+                <!-- City Search Tab -->
+                <div id="tab-city" class="location-tab-content">
+                    <div class="location-search-row">
+                        <input type="text" id="city-input" class="location-input city-input" placeholder="Enter city name or address">
+                        <button id="city-search-btn" class="location-search-btn">
+                            <i class="fa-solid fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="city-result" class="location-result-area"></div>
+                    <p class="location-hint">Try: "Jerusalem", "New York, NY", or a full address</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

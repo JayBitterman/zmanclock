@@ -1,0 +1,2140 @@
+/* ============================================================================
+   Zman Clock - Complete Stylesheet (Redesigned)
+   ============================================================================ */
+
+/* ============================================================================
+   Google Fonts Import - Better Typography
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ============================================================================
+   CSS Variables & Base Styles
+   ============================================================================ */
+
+:root {
+  /* Clock & UI Colors */
+  --clock-border: rgba(255, 255, 255, 0.15);
+  --clock-bg: rgba(0, 0, 0, 0.2);
+  --text-color: white;
+  
+  /* UPDATED: Darker, classic hand color */
+  --hand-color: #797575;
+  --hand-highlight: #797575;
+
+  /* Dynamic Atmosphere Variables (Updated by JS) */
+  --sky-top: #000000;
+  --sky-bottom: #000000;
+  --terrain-brightness: 1;
+  --terrain-contrast: 1;
+  --horizon-glow-opacity: 0;
+  --horizon-glow-color: #ffaa00;
+  
+  /* Weather Variables (Updated by JS) */
+  --wind-intensity: 1;
+  --fog-opacity: 0;
+  --rain-opacity: 0;
+  --snow-opacity: 0;
+  --cloud-opacity: 0;
+  
+  /* Text Shadow for Readability */
+  --text-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.9),
+    0 2px 6px rgba(0, 0, 0, 0.7),
+    0 0 10px rgba(0, 0, 0, 0.5);
+  --text-outline: 
+    -1px -1px 0 rgba(0, 0, 0, 0.5),
+    1px -1px 0 rgba(0, 0, 0, 0.5),
+    -1px 1px 0 rgba(0, 0, 0, 0.5),
+    1px 1px 0 rgba(0, 0, 0, 0.5);
+  
+  /* Calendar Colors - ORIGINAL */
+  --cal-bg: rgba(18, 22, 30, 0.95);
+  --cal-card: rgba(30, 36, 48, 0.9);
+  --cal-border: rgba(100, 120, 150, 0.3);
+  --cal-text: #e8eaed;
+  --cal-text-muted: rgba(200, 210, 220, 0.5);
+  --cal-accent: #4a9eff;
+  --cal-accent-soft: rgba(74, 158, 255, 0.15);
+  --cal-today: #3d8bfd;
+  --cal-selected: #22c55e;
+  --cal-hover: rgba(74, 158, 255, 0.2);
+  
+  /* Layout Variables - ORIGINAL */
+  --nav-height: 20vmin;
+  --calendar-gap: 2vmin;
+  --terrain-height: 30dvh;
+}
+
+/* ============================================================================
+   Base & Reset
+   ============================================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100dvh;
+  width: 100dvw;
+  margin: 0;
+  background-color: black;
+  font-family: 'Inter', 'Heebo', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[lang="he"], .hebrew-text {
+  font-family: 'Heebo', 'Inter', sans-serif;
+}
+
+#screen {
+  background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-bottom) 100%);
+  transition: background 0.5s ease;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100dvh;
+  width: 100dvw;
+}
+
+/* ============================================================================
+   Clock
+   ============================================================================ */
+
+.clock {
+  width: 50vmin;
+  height: 50vmin;
+  position: relative;
+  margin: auto;
+}
+
+.clock-container {
+  position: relative;
+  width: 80vmin;
+  height: 80vmin;
+  max-width: 95%;
+  max-height: 95%;
+}
+
+.clock-face {
+  z-index: 4;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 0.4vmin solid var(--clock-border);
+  background: var(--clock-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 
+    0 0 3vmin rgba(0, 0, 0, 0.3),
+    inset 0 0 2vmin rgba(255, 255, 255, 0.05);
+}
+
+/* UPDATED HAND STYLE - Classic 3D Tapered Look */
+.hand {
+  position: absolute;
+  top: 50%;
+  right: 50%;
+  width: 48%; /* Slightly shorter than radius to keep inside border */
+  height: 2.5vmin; /* Thicker base for tapered look */
+  margin-top: -1.25vmin; /* Center vertically based on new height */
+  transform-origin: 100% 50%; /* Pivot around the center-right point */
+  
+  /* 3D Ridge Effect: Lighter top half, Darker bottom half */
+  background: linear-gradient(to bottom, 
+    var(--hand-highlight) 0%, 
+    var(--hand-highlight) 50%, 
+    var(--hand-color) 50%, 
+    var(--hand-color) 100%
+  );
+  
+  /* Tapered Shape: Point at left (0%), Base at right (100%) */
+  clip-path: polygon(0 50%, 100% 15%, 100% 85%);
+  
+  z-index: 9;
+  
+  /* Smooth transition for movement */
+  transition: transform 150ms linear;
+  
+  /* Drop shadow that respects the clip-path shape */
+  filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.6));
+}
+
+/* UPDATED CENTER CAP - Larger, Convex Button Look */
+.hand::after {
+  content: '';
+  position: absolute;
+  right: -1.5vmin; /* Centered on the pivot point */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3vmin;
+  height: 3vmin;
+  border-radius: 50%;
+  
+  /* Convex 3D Button Effect */
+  background: radial-gradient(circle at 30% 30%, 
+    #5a5a5a 0%, 
+    #2a2a2a 60%, 
+    #000000 100%
+  );
+  
+  box-shadow: 0 0 1vmin rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+.clock-number {
+  z-index: 10;
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-color);
+  transform-origin: center;
+  font-size: 3.5vmin;
+  font-weight: 500;
+  font-family: 'Heebo', sans-serif;
+  text-shadow: var(--text-shadow);
+  opacity: 0.9;
+}
+
+/* ============================================================================
+   Sun & Moon - IMPROVED
+   ============================================================================ */
+
+#sun {
+  z-index: 5;
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 35%,
+    #fffde7 0%,
+    #ffeb3b 25%,
+    #ffc107 50%,
+    #ff9800 75%,
+    #e65100 100%
+  );
+  box-shadow:
+    0 0 2vmin rgba(255, 200, 50, 0.6),
+    0 0 4vmin rgba(255, 150, 0, 0.4),
+    0 0 6vmin rgba(255, 100, 0, 0.2);
+  animation: sunPulse 4s ease-in-out infinite;
+}
+
+@keyframes sunPulse {
+  0%, 100% { 
+    box-shadow:
+      0 0 2vmin rgba(255, 200, 50, 0.6),
+      0 0 4vmin rgba(255, 150, 0, 0.4),
+      0 0 6vmin rgba(255, 100, 0, 0.2);
+  }
+  50% { 
+    box-shadow:
+      0 0 2.5vmin rgba(255, 200, 50, 0.7),
+      0 0 5vmin rgba(255, 150, 0, 0.5),
+      0 0 7vmin rgba(255, 100, 0, 0.3);
+  }
+}
+
+#moon {
+  z-index: 6;
+  position: absolute;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  filter: drop-shadow(0 0 1vmin rgba(200, 200, 180, 0.4));
+}
+
+/* ============================================================================
+   Sun Times
+   ============================================================================ */
+
+#sun-times {
+  display: inline-block;
+}
+
+.sun-time {
+  z-index: 16;
+  position: absolute;
+  color: var(--text-color);
+  text-align: center;
+  font-size: 2.2vmin;
+  font-weight: 700; /* Increased weight for legibility */
+  font-family: 'Heebo', 'Inter', sans-serif;
+  letter-spacing: 0.02em;
+  transition: color 0.3s ease;
+  
+  /* REMOVED: background, padding, backdrop-filter */
+  
+  /* NEW: Strong stroke/outline effect for readability against clouds */
+  text-shadow: 
+    -1px -1px 0 #000,  
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* ============================================================================
+   Weather Effects Layer
+   ============================================================================ */
+
+#weather-effects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+
+/* Cloud Container */
+#cloud-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* Performance: isolate painting of clouds */
+  contain: layout style;
+}
+
+/* Base cloud styling */
+.cloud {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+  animation: cloudDrift var(--cloud-speed, 60s) linear infinite;
+  /* Performance: isolate each cloud's rendering */
+  contain: layout style paint;
+  /* Base appearance - white fluffy cloud */
+  background: radial-gradient(ellipse at 30% 30%, 
+    rgba(255, 255, 255, 0.95) 0%, 
+    rgba(250, 250, 255, 0.85) 25%,
+    rgba(240, 242, 250, 0.6) 50%, 
+    rgba(230, 235, 245, 0.3) 70%,
+    transparent 85%);
+  /* Brightness controlled by JS via CSS variable */
+  filter: blur(8px) brightness(var(--cloud-brightness, 1));
+  opacity: var(--cloud-base-opacity, 0.7);
+  transition: filter 2s ease, opacity 2s ease, background 2s ease;
+}
+
+/* Storm clouds - darker gray appearance */
+:root[data-weather="storm"] .cloud {
+  background: radial-gradient(ellipse at 30% 30%, 
+    rgba(180, 185, 195, 0.95) 0%, 
+    rgba(140, 150, 165, 0.85) 25%,
+    rgba(100, 115, 135, 0.6) 50%, 
+    rgba(70, 85, 110, 0.3) 70%,
+    transparent 85%);
+}
+
+/* Heavy overcast - grayish clouds */
+:root[data-weather="heavy"] .cloud {
+  background: radial-gradient(ellipse at 30% 30%, 
+    rgba(210, 215, 225, 0.95) 0%, 
+    rgba(185, 195, 210, 0.85) 25%,
+    rgba(160, 175, 195, 0.6) 50%, 
+    rgba(140, 155, 175, 0.3) 70%,
+    transparent 85%);
+}
+
+/* Layer depth variations - use same filter structure */
+.cloud.layer-back {
+  filter: blur(14px) brightness(var(--cloud-brightness, 1));
+  opacity: calc(var(--cloud-base-opacity, 0.7) * 0.6);
+  z-index: 1;
+}
+
+.cloud.layer-mid {
+  filter: blur(10px) brightness(var(--cloud-brightness, 1));
+  opacity: calc(var(--cloud-base-opacity, 0.7) * 0.8);
+  z-index: 2;
+}
+
+.cloud.layer-front {
+  filter: blur(6px) brightness(var(--cloud-brightness, 1));
+  opacity: var(--cloud-base-opacity, 0.7);
+  z-index: 3;
+}
+
+/* Night clouds - blue-gray tint (only applied in deep night) */
+:root[data-time="night"] .cloud {
+  background: radial-gradient(ellipse at 30% 30%, 
+    rgba(140, 150, 180, 0.9) 0%, 
+    rgba(100, 115, 150, 0.75) 25%,
+    rgba(70, 85, 120, 0.5) 50%, 
+    rgba(50, 65, 100, 0.25) 70%,
+    transparent 85%);
+}
+
+/* Cloud drift animation */
+@keyframes cloudDrift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(var(--cloud-move-x, 100%), var(--cloud-move-y, 0));
+  }
+}
+
+/* High cloud cover - ensure overlap and layering */
+.cloud.dense {
+  filter: blur(15px);
+}
+
+.rain-container {
+  position: fixed;
+  inset: 0;
+  opacity: var(--rain-opacity, 0);
+  transition: opacity 1s ease;
+  z-index: 15;
+  pointer-events: none;
+  /* Performance: isolate rendering */
+  contain: strict;
+}
+
+.raindrop {
+  position: absolute;
+  width: 2px;
+  height: 20px;
+  background: linear-gradient(to bottom, 
+    transparent 0%, 
+    rgba(200, 220, 255, 0.4) 30%,
+    rgba(180, 205, 245, 0.8) 70%,
+    rgba(160, 190, 235, 0.9) 100%);
+  animation: rainfall linear infinite;
+  filter: blur(0.5px);
+  box-shadow: 0 0 2px rgba(180, 210, 255, 0.3);
+  /* Performance: prevent layout recalc */
+  contain: layout style;
+}
+
+@keyframes rainfall {
+  0% { transform: translateY(-100vh); }
+  100% { transform: translateY(100vh); }
+}
+
+.snow-container {
+  position: fixed;
+  inset: 0;
+  opacity: var(--snow-opacity, 0);
+  transition: opacity 1s ease;
+  z-index: 15;
+  pointer-events: none;
+  /* Performance: isolate rendering */
+  contain: strict;
+}
+
+.snowflake {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+  filter: blur(1px);
+  animation: snowfall linear infinite;
+  /* Performance: prevent layout recalc */
+  contain: layout style;
+}
+
+@keyframes snowfall {
+  0% { 
+    transform: translateY(-10vh) translateX(0) rotate(0deg); 
+    opacity: 1;
+  }
+  100% { 
+    transform: translateY(100vh) translateX(20px) rotate(360deg); 
+    opacity: 0.7;
+  }
+}
+
+.fog-layer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top,
+    rgba(200, 200, 200, var(--fog-opacity, 0)) 0%,
+    rgba(180, 180, 180, calc(var(--fog-opacity, 0) * 0.7)) 30%,
+    rgba(150, 150, 150, calc(var(--fog-opacity, 0) * 0.3)) 60%,
+    transparent 100%);
+  transition: all 2s ease;
+}
+
+.night-mode .fog-layer {
+  background: linear-gradient(to top,
+    rgba(50, 60, 80, var(--fog-opacity, 0)) 0%,
+    rgba(40, 50, 70, calc(var(--fog-opacity, 0) * 0.7)) 30%,
+    rgba(30, 40, 60, calc(var(--fog-opacity, 0) * 0.3)) 60%,
+    transparent 100%);
+}
+
+.lightning {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.lightning.flash {
+  animation: lightningFlash 0.5s ease-out;
+}
+
+/* Global lightning flash - brightens EVERYTHING */
+:root.lightning-flash {
+  --lightning-boost: 1.5;
+}
+
+:root.lightning-flash .terrain-container,
+:root.lightning-flash #vegetation-layer,
+:root.lightning-flash .person-wrapper,
+:root.lightning-flash #cloud-container,
+:root.lightning-flash #sky-effects {
+  filter: brightness(var(--lightning-boost)) !important;
+  transition: filter 0.3s ease-out;
+}
+
+:root.lightning-flash #screen {
+  background: linear-gradient(
+    to bottom, 
+    color-mix(in srgb, var(--sky-top) 60%, white) 0%, 
+    color-mix(in srgb, var(--sky-bottom) 60%, white) 100%
+  ) !important;
+}
+
+:root:not(.lightning-flash) .terrain-container,
+:root:not(.lightning-flash) #vegetation-layer,
+:root:not(.lightning-flash) .person-wrapper {
+  transition: filter 0.3s ease-in;
+}
+
+
+
+/* ============================================================================
+   Sky Effects (Stars)
+   ============================================================================ */
+
+#sky-effects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  /* STARS ARE COMPLETELY INVISIBLE BY DEFAULT */
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Stars ONLY visible when night-mode class is present on #sky-effects */
+#sky-effects.night-mode .star {
+  visibility: visible;
+  animation: twinkle var(--twinkle-duration) ease-in-out infinite;
+  animation-delay: var(--delay);
+  opacity: var(--star-opacity, 0.8);
+}
+
+/* Star visibility - dimmed by clouds but not hidden */
+#sky-effects.cloudy .star {
+  opacity: calc(var(--star-opacity, 0.7) * var(--star-dim-factor, 1));
+}
+
+/* COMPLETELY HIDE stars when overcast (95%+ cloud cover) */
+#sky-effects.night-mode.overcast .star {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+@keyframes twinkle {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.3); opacity: 1; }
+}
+
+/* ============================================================================
+   BIRDS - Animated Sprite System
+   ============================================================================ */
+
+.bird {
+  background-image: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/174479/bird-cells-new.svg');
+  filter: invert(10%) sepia(5%) saturate(200%) brightness(30%);
+  background-size: auto 100%;
+  width: 88px;
+  height: 125px;
+  will-change: background-position;
+  animation-name: fly-cycle;
+  animation-timing-function: steps(10);
+  animation-iteration-count: infinite;
+}
+
+.bird-one {
+  animation-duration: 1s;
+  animation-delay: -0.5s;
+}
+
+.bird-two { 
+  animation-duration: 0.9s; 
+  animation-delay: -0.75s; 
+}
+
+.bird-three {
+  animation-duration: 1.25s;
+  animation-delay: -0.25s;
+}
+
+.bird-four {
+  animation-duration: 1.1s;
+  animation-delay: -0.5s;
+}
+
+.bird-container {
+  position: absolute;
+  top: 10%;
+  left: -10%;
+  transform: scale(0) translateX(-10vw);
+  will-change: transform;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  z-index: 2;
+  display: none; /* Hidden by default, shown via JS when conditions allow */
+}
+
+.bird-container.active {
+  display: block;
+  animation-name: fly-right-one;
+}
+
+/* Right-to-left flight */
+.bird-container.active.fly-left {
+  left: auto;
+  right: -10%;
+  animation-name: fly-left-one;
+}
+
+.bird-container.active.fly-left .bird {
+  transform: scaleX(-1); /* Flip the bird sprite */
+}
+
+.bird-container-one {
+  animation-duration: 15s;
+}
+
+.bird-container-two {
+  animation-duration: 16s;
+  top: 15%;
+}
+
+.bird-container-three {
+  animation-duration: 14.6s;
+  top: 8%;
+}
+
+.bird-container-four {
+  animation-duration: 16s;
+  top: 20%;
+}
+
+@keyframes fly-cycle {
+  100% {
+    background-position: -900px 0;
+  }
+}
+
+@keyframes fly-right-one {
+  0% {
+    transform: scale(0.3) translateX(-10vw);
+  }
+  10% {
+    transform: translateY(2vh) translateX(10vw) scale(0.4);
+  }
+  20% {
+    transform: translateY(0vh) translateX(30vw) scale(0.5);
+  }
+  30% {
+    transform: translateY(4vh) translateX(50vw) scale(0.6);
+  }
+  40% {
+    transform: translateY(2vh) translateX(70vw) scale(0.6);
+  }
+  50% {
+    transform: translateY(0vh) translateX(90vw) scale(0.6);
+  }
+  60% {
+    transform: translateY(0vh) translateX(110vw) scale(0.6);
+  }
+  100% {
+    transform: translateY(0vh) translateX(110vw) scale(0.6);
+  }
+}
+
+@keyframes fly-right-two {
+  0% {
+    transform: translateY(-2vh) translateX(-10vw) scale(0.5);
+  }
+  10% {
+    transform: translateY(0vh) translateX(10vw) scale(0.4);
+  }
+  20% {
+    transform: translateY(-4vh) translateX(30vw) scale(0.6);
+  }
+  30% {
+    transform: translateY(1vh) translateX(50vw) scale(0.45);
+  }
+  40% {
+    transform: translateY(-2.5vh) translateX(70vw) scale(0.5);
+  }
+  50% {
+    transform: translateY(0vh) translateX(90vw) scale(0.45);
+  }
+  51% {
+    transform: translateY(0vh) translateX(110vw) scale(0.45);
+  }
+  100% {
+    transform: translateY(0vh) translateX(110vw) scale(0.45);
+  }
+}
+
+/* Right to Left animations */
+@keyframes fly-left-one {
+  0% {
+    transform: scale(0.3) translateX(10vw);
+  }
+  10% {
+    transform: translateY(2vh) translateX(-10vw) scale(0.4);
+  }
+  20% {
+    transform: translateY(0vh) translateX(-30vw) scale(0.5);
+  }
+  30% {
+    transform: translateY(4vh) translateX(-50vw) scale(0.6);
+  }
+  40% {
+    transform: translateY(2vh) translateX(-70vw) scale(0.6);
+  }
+  50% {
+    transform: translateY(0vh) translateX(-90vw) scale(0.6);
+  }
+  60% {
+    transform: translateY(0vh) translateX(-110vw) scale(0.6);
+  }
+  100% {
+    transform: translateY(0vh) translateX(-110vw) scale(0.6);
+  }
+}
+
+@keyframes fly-left-two {
+  0% {
+    transform: translateY(-2vh) translateX(10vw) scale(0.5);
+  }
+  10% {
+    transform: translateY(0vh) translateX(-10vw) scale(0.4);
+  }
+  20% {
+    transform: translateY(-4vh) translateX(-30vw) scale(0.6);
+  }
+  30% {
+    transform: translateY(1vh) translateX(-50vw) scale(0.45);
+  }
+  40% {
+    transform: translateY(-2.5vh) translateX(-70vw) scale(0.5);
+  }
+  50% {
+    transform: translateY(0vh) translateX(-90vw) scale(0.45);
+  }
+  51% {
+    transform: translateY(0vh) translateX(-110vw) scale(0.45);
+  }
+  100% {
+    transform: translateY(0vh) translateX(-110vw) scale(0.45);
+  }
+}
+
+.horizon-glow {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50vh;
+  background: radial-gradient(ellipse at center bottom, var(--horizon-glow-color, #ffaa00) 0%, transparent 70%);
+  opacity: var(--horizon-glow-opacity, 0);
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: screen;
+  transition: opacity 1s linear;
+}
+
+/* ============================================================================
+   Terrain with Grass
+   ============================================================================ */
+
+.terrain-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 35vh;
+  z-index: 4;
+  pointer-events: none;
+  filter: brightness(max(0.35, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1)))) contrast(var(--terrain-contrast, 1));
+  transition: filter 0.5s ease;
+}
+
+#land-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.land-layer {
+  transition: fill 1s ease;
+}
+
+#land-back { fill: #5b5349; }
+#land-mid { fill: #494238; }
+#land-front { fill: #433d33; }
+
+.grass-blade {
+  position: absolute;
+  width: 2px;
+  background: linear-gradient(to top, #1a2810, #2a3d1a);
+  border-radius: 0 0 1px 1px;
+  transform-origin: bottom center;
+  animation: grassSway calc(2s / var(--wind-intensity, 1)) ease-in-out infinite alternate;
+  opacity: 0.7;
+}
+
+@keyframes grassSway {
+  0% { transform: rotate(calc(-5deg * var(--wind-intensity, 1))); }
+  100% { transform: rotate(calc(5deg * var(--wind-intensity, 1))); }
+}
+
+/* ============================================================================
+   Vegetation
+   ============================================================================ */
+
+#vegetation-layer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 35vh;
+  pointer-events: none;
+  z-index: 5;
+  filter: brightness(max(0.35, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1))));
+  transition: filter 0.5s ease;
+}
+
+.tree {
+  position: absolute;
+  bottom: 20%;
+  width: 14vmin;
+  height: 20vmin;
+  transform-origin: bottom center;
+  animation: treeSway calc(4s / var(--wind-intensity, 1)) ease-in-out infinite alternate;
+  transition: filter 2s ease;
+}
+
+.tree svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.tree .trunk { fill: #3d2817; }
+.tree .branch { stroke: #3d2817; }
+.tree .foliage { transition: fill 2s ease, opacity 2s ease; }
+
+.bush {
+  position: absolute;
+  bottom: 3%;
+  width: 6vmin;
+  height: 4vmin;
+  background: radial-gradient(ellipse at 50% 100%, #2a3d1a 0%, #1a2810 100%);
+  border-radius: 50% 50% 45% 45%;
+  z-index: 6;
+  transform-origin: bottom center;
+  animation: bushSway calc(3s / var(--wind-intensity, 1)) ease-in-out infinite alternate-reverse;
+  transition: background 2s ease;
+  box-shadow: inset 0 -1vmin 2vmin rgba(0, 0, 0, 0.3);
+}
+
+.bush.spring { background: radial-gradient(ellipse at 50% 100%, #5a8c41 0%, #3d5c2a 100%); }
+.bush.summer { background: radial-gradient(ellipse at 50% 100%, #2a3d1a 0%, #1a2810 100%); }
+.bush.fall { background: radial-gradient(ellipse at 50% 100%, #9c5c2c 0%, #6b3d1a 100%); }
+.bush.winter { background: radial-gradient(ellipse at 50% 100%, #4a4a3a 0%, #3a3a2a 100%); }
+
+@keyframes treeSway {
+  0% { transform: rotate(calc(-2deg * var(--wind-intensity, 1))); }
+  100% { transform: rotate(calc(2deg * var(--wind-intensity, 1))); }
+}
+
+@keyframes bushSway {
+  0% { transform: rotate(calc(-3deg * var(--wind-intensity, 1))) scaleX(0.98); }
+  100% { transform: rotate(calc(3deg * var(--wind-intensity, 1))) scaleX(1.02); }
+}
+
+/* ============================================================================
+   The Person
+   ============================================================================ */
+
+.person-wrapper {
+  position: fixed;
+  bottom: calc(35vh - 35vh);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 7;
+  width: 8vmin;
+  height: 20vmin;
+  pointer-events: none;
+  filter: brightness(max(0.4, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1))));
+  transition: filter 0.5s ease;
+}
+
+.person {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: breathe 5s ease-in-out infinite;
+}
+
+.head {
+  width: 3.5vmin;
+  height: 4vmin;
+  background: linear-gradient(135deg, #2a2a2a 0%, #111 100%);
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+  animation: headBob 7s ease-in-out infinite alternate;
+}
+
+.body {
+  width: 5.5vmin;
+  height: 8vmin;
+  background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-radius: 2vmin 2vmin 0 0;
+  margin-top: -0.5vmin;
+  z-index: 1;
+  transition: all 0.5s ease;
+}
+
+.person.sweater .body {
+  background: linear-gradient(180deg, #4a3728 0%, #3a2718 100%);
+}
+
+.person.winter-coat .body {
+  background: linear-gradient(180deg, #1a3a5a 0%, #0a2a4a 100%);
+  border-radius: 2.5vmin 2.5vmin 0 0;
+  width: 6vmin;
+}
+
+.person.winter-coat .head::after {
+  content: '';
+  position: absolute;
+  top: -1vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4vmin;
+  height: 2vmin;
+  background: #3a3a3a;
+  border-radius: 50% 50% 0 0;
+}
+
+.legs {
+  width: 5vmin;
+  height: 8vmin;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+  border-radius: 0 0 1vmin 1vmin;
+}
+
+.shadow {
+  position: absolute;
+  bottom: -0.5vmin;
+  width: 10vmin;
+  height: 2vmin;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 50%;
+  transform: scaleY(0.4);
+  z-index: 0;
+  filter: blur(4px);
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.015); }
+}
+
+@keyframes headBob {
+  0% { transform: rotate(-1deg) translateY(0); }
+  100% { transform: rotate(1deg) translateY(0.5px); }
+}
+
+/* ============================================================================
+   Digital Times & Date Info
+   ============================================================================ */
+
+#digital-times {
+  z-index: 10;
+  position: fixed;
+  top: 0;
+  right: 0;
+  padding: 1.5rem;
+}
+
+#digital-time {
+  color: var(--text-color);
+  font-size: 4.5vmin;
+  font-family: 'JetBrains Mono', 'Inter', monospace;
+  font-weight: 500;
+  text-align: right;
+  text-shadow: var(--text-shadow);
+  letter-spacing: 0.05em;
+}
+
+#seasonal-time {
+  color: var(--text-color);
+  text-shadow: var(--text-shadow);
+  font-size: 4vmin;
+  font-family: 'Heebo', sans-serif;
+  font-weight: 400;
+  text-align: right;
+  opacity: 0.9;
+}
+
+#day-of-week {
+  color: var(--text-color);
+  font-size: 4vmin;
+  font-family: 'Heebo', sans-serif;
+  font-weight: 500;
+  text-align: right;
+  text-shadow: var(--text-shadow);
+  margin-top: 0.5vmin;
+}
+
+#week-info {
+  z-index: 10;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 1.5rem;
+}
+
+#date {
+  color: var(--text-color);
+  font-size: 4.5vmin;
+  font-family: 'Heebo', sans-serif;
+  font-weight: 600;
+  text-align: left;
+  text-shadow: var(--text-shadow);
+}
+
+#holiday {
+  color: var(--text-color);
+  font-size: 3.5vmin;
+  font-family: 'Heebo', sans-serif;
+  font-weight: 400;
+  text-align: left;
+  text-shadow: var(--text-shadow);
+  opacity: 0.9;
+}
+
+#omer {
+  color: var(--text-color);
+  font-size: 3vmin;
+  font-family: 'Heebo', sans-serif;
+  font-weight: 400;
+  text-align: left;
+  text-shadow: var(--text-shadow);
+  opacity: 0.85;
+  margin-top: 0.5vmin;
+}
+
+/* ============================================================================
+   Navigation - Toolbar Toggle System
+   ============================================================================ */
+
+/* Main toolbar toggle button */
+.toolbar-toggle {
+  position: fixed;
+  bottom: 2vmin;
+  right: 2vmin;
+  z-index: 20;
+  width: 12vmin;
+  height: 12vmin;
+  max-width: 56px;
+  max-height: 56px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: white;
+  font-size: 5vmin;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.toolbar-toggle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.toolbar-toggle:active {
+  transform: scale(0.95);
+}
+
+.toolbar-toggle.active {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.toolbar-toggle i {
+  transition: transform 0.3s ease;
+}
+
+.toolbar-toggle.active i {
+  transform: rotate(90deg);
+}
+
+/* Controls container - hidden by default, MOVED DOWN more */
+.controls-container {
+  position: fixed;
+  bottom: 1vmin;
+  left: 0;
+  right: 0;
+  z-index: 16;
+  padding: 2vmin;
+  padding-right: 80px; /* Leave space for toolbar toggle */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4vmin;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.controls-container.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Button Groups */
+.button-group {
+  display: flex;
+  gap: 1.5vmin;
+  align-items: center;
+  position: relative;
+}
+
+/* Reset button group - positioned on far left */
+.button-group.reset-group {
+  position: absolute;
+  left: 2vmin;
+}
+
+/* Speed group - relative positioning for speed indicator */
+.button-group.speed-group {
+  position: relative;
+}
+
+/* Modern Button Style */
+.control-btn {
+  width: 11vmin;
+  height: 11vmin;
+  max-width: 52px;
+  max-height: 52px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: white;
+  font-size: 4vmin;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  padding: 0;
+  margin: 0;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.08);
+}
+
+.control-btn:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.control-btn i {
+  font-size: inherit;
+  pointer-events: none;
+}
+
+/* Reset button */
+.control-btn.reset-btn {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.3);
+  display: none;
+}
+
+.control-btn.reset-btn.visible {
+  display: flex;
+}
+
+.control-btn.reset-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+/* Calendar button in toolbar */
+.control-btn.calendar-btn {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  width: 11vmin;
+  height: 11vmin;
+  max-width: 52px;
+  max-height: 52px;
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 4.5vmin;
+}
+
+/* Speed indicator */
+.speed-indicator {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 1vmin;
+  font-size: 2.5vmin;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.5vmin 1vmin;
+  border-radius: 1vmin;
+}
+
+.speed-indicator.visible {
+  opacity: 1;
+}
+
+/* Hide legacy navigators */
+.navigators,
+.day-navigator,
+.speed-navigator,
+.reset-navigator,
+.nav-button,
+.speed-button,
+.reset-button {
+  display: none !important;
+}
+
+/* Hide weather info display */
+#weather-info {
+  display: none !important;
+}
+
+/* Hide ONLY the legacy calendar toggle button (not the new one in controls) */
+#calendar-toggle {
+  display: none !important;
+}
+
+/* ============================================================================
+   CALENDAR - FULLY RESPONSIVE SCALING
+   ============================================================================ */
+
+/* Legacy calendar button positioning (hidden separately via #calendar-toggle) */
+.calendar-btn {
+  position: fixed;
+  z-index: 17;
+  width: 9vmin;
+  height: 9vmin;
+  border-radius: 50%;
+  font-size: 4.5vmin;
+  right: 2vmin;
+  bottom: calc(var(--nav-height) + 2vmin);
+}
+
+.calendar-btn:active {
+  transform: scale(0.93);
+}
+
+#calendar-wrapper {
+  z-index: 20;
+  position: fixed;
+  bottom: calc(var(--nav-height) + 2vmin);
+  right: var(--calendar-gap);
+  
+  /* Base sizing - will be overridden by media queries */
+  width: min(360px, calc(100dvw - 1.5rem));
+  
+  /* Premium Glass Look */
+  background: rgba(12, 14, 20, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    
+  /* Layout */
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* Allow scaling without clipping */
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: bottom right;
+}
+
+.calendar-container {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* No overflow scrolling - calendar scales to fit instead */
+}
+
+/* Hebrew RTL support */
+.calendar-container.hebrew { direction: rtl; }
+.calendar-container.hebrew .input-section { direction: ltr; }
+.calendar-container.hebrew .header { flex-direction: row-reverse; }
+
+.calendar .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0 0.25rem;
+  flex-shrink: 0; 
+}
+
+.month-year {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.02em;
+}
+
+/* Sleek Chevron Buttons */
+.calendar .header button {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 50%;
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  color: transparent; 
+  overflow: hidden;
+}
+
+.calendar .header button:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.3);
+  transform: scale(1.05);
+}
+
+/* Draw Chevrons using CSS borders */
+.calendar .header button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 2px solid white;
+  border-bottom: 2px solid white;
+  opacity: 0.8;
+}
+
+/* Standard Orientation (Same for English & Hebrew) */
+#prev-month::after { transform: translate(-30%, -50%) rotate(135deg); }
+#next-month::after { transform: translate(-70%, -50%) rotate(-45deg); }
+
+.calendar-type-select {
+  display: flex;
+  background: rgba(0,0,0,0.3);
+  border-radius: 0.75rem;
+  padding: 0.25rem;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+  /* FORCE Left-to-Right direction so buttons never swap places */
+  direction: ltr !important; 
+}
+
+.type-option {
+  flex: 1;
+  text-align: center;
+  padding: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.4);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.type-option:hover { color: rgba(255,255,255,0.8); }
+.type-option:has(input:checked) {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.type-option input { display: none; }
+
+.input-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.input-section input {
+  width: 3rem; /* Default width for Day/Month */
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  text-align: center;
+  font-size: 1rem;
+  padding: 0.25rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+/* Widen the Year input specifically */
+#year-input {
+  width: 4.5rem; 
+}
+
+.input-section input:focus {
+  outline: none;
+  border-bottom-color: var(--cal-accent);
+}
+
+.input-section .separator { opacity: 0.3; }
+
+#go-button {
+  border: none;
+  background: white;
+  color: black;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: transform 0.1s;
+}
+
+#go-button:active { transform: scale(0.95); }
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+.weekday-label {
+  text-align: center;
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.4);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.day {
+  /* Use fixed size instead of aspect-ratio for better control */
+  width: 100%;
+  height: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.9);
+  cursor: pointer;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.15s;
+}
+
+.day:hover:not(.other-month):not(.selected):not(.today) {
+  background: rgba(255,255,255,0.08);
+}
+
+.day.other-month { opacity: 0.2; pointer-events: none; }
+
+.day.today {
+  color: #4a9eff;
+  font-weight: 800;
+  background: rgba(74, 158, 255, 0.15);
+}
+
+.day.selected {
+  background: white;
+  color: black;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 2;
+}
+
+/* ============================================================================
+   Calendar Responsiveness - Scale to Fit
+   ============================================================================ */
+
+/* Small Phones: Center the calendar */
+@media (max-width: 450px) {
+  #calendar-wrapper {
+    right: 50%;
+    transform: translateX(50%);
+    width: 92vw;
+    bottom: calc(var(--nav-height) + 1rem);
+  }
+  
+  .controls-container {
+    gap: 2vmin;
+  }
+  
+  .control-btn {
+    width: 10vmin;
+    height: 10vmin;
+  }
+}
+
+/* Compact mode for short screens - reduce padding and sizes */
+@media (max-height: 650px) {
+  .calendar-container { 
+    padding: 0.8rem; 
+  }
+  .month-year { font-size: 1rem; }
+  .input-section { 
+    margin-bottom: 0.75rem; 
+    padding-bottom: 0.75rem; 
+  }
+  .day { 
+    font-size: 0.75rem; 
+    height: 1.8rem;
+  }
+  .calendar-type-select { margin-bottom: 0.5rem; }
+  .type-option { 
+    padding: 0.3rem; 
+    font-size: 0.7rem; 
+  }
+  .weekday-label { font-size: 0.55rem; }
+  
+  #digital-time, #date { font-size: 3.5vmin; }
+  #seasonal-time, #day-of-week { font-size: 3vmin; }
+}
+
+/* Very short screens (like Nest Hub at 600px height) */
+@media (max-height: 600px) {
+  .calendar-container { 
+    padding: 0.6rem; 
+  }
+  .month-year { font-size: 0.9rem; }
+  .calendar .header { margin-bottom: 0.6rem; }
+  .calendar .header button {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+  .input-section { 
+    margin-bottom: 0.5rem; 
+    padding-bottom: 0.5rem;
+    gap: 0.3rem;
+  }
+  .input-section input {
+    font-size: 0.85rem;
+    padding: 0.15rem;
+    width: 2.5rem;
+  }
+  #year-input { width: 3.5rem; }
+  #go-button {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.65rem;
+  }
+  .day { 
+    font-size: 0.7rem; 
+    height: 1.5rem;
+  }
+  .calendar-type-select { 
+    margin-bottom: 0.4rem;
+    padding: 0.15rem;
+  }
+  .type-option { 
+    padding: 0.25rem; 
+    font-size: 0.65rem; 
+  }
+  .weekday-label { font-size: 0.5rem; }
+  .weekdays { margin-bottom: 0.25rem; }
+}
+
+/* Extra short screens (like Nest Hub at ~480px usable height) */
+@media (max-height: 520px) {
+  #calendar-wrapper {
+    bottom: 1rem;
+  }
+  .calendar-container { 
+    padding: 0.4rem; 
+  }
+  .month-year { font-size: 0.8rem; }
+  .calendar .header { margin-bottom: 0.4rem; }
+  .calendar .header button {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+  .calendar .header button::after {
+    width: 0.3rem;
+    height: 0.3rem;
+  }
+  .input-section { 
+    margin-bottom: 0.4rem; 
+    padding-bottom: 0.4rem;
+    gap: 0.2rem;
+  }
+  .input-section input {
+    font-size: 0.75rem;
+    padding: 0.1rem;
+    width: 2rem;
+  }
+  #year-input { width: 3rem; }
+  #go-button {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.6rem;
+  }
+  .day { 
+    font-size: 0.6rem; 
+    height: 1.2rem;
+  }
+  .calendar-type-select { 
+    margin-bottom: 0.3rem;
+    padding: 0.1rem;
+  }
+  .type-option { 
+    padding: 0.2rem; 
+    font-size: 0.55rem; 
+  }
+  .weekday-label { font-size: 0.45rem; }
+  .weekdays { margin-bottom: 0.2rem; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#calendar-wrapper { animation: slideUp 0.3s ease-out backwards; }
+@media (max-width: 450px) {
+  #calendar-wrapper { animation: none; } /* Simpler on mobile to avoid transform conflicts */
+}
+/* ============================================================================
+   Location Popup (NEW)
+   ============================================================================ */
+
+#location-wrapper {
+  position: fixed;
+  bottom: calc(15vmin + 1rem);
+  right: 2vmin;
+  z-index: 26;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.location-container {
+  background: var(--cal-bg);
+  border: 1px solid var(--cal-border);
+  border-radius: 1rem;
+  padding: 1rem;
+  min-width: 320px;
+  max-width: 400px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  color: white;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.location-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.location-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.location-header h3 i {
+  color: #4a9eff;
+}
+
+.location-reset-btn {
+  background: rgba(74, 158, 255, 0.15);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  color: #4a9eff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: none; 
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s ease;
+}
+
+.location-reset-btn.visible {
+  display: flex !important;
+}
+
+.location-reset-btn:hover {
+  background: rgba(74, 158, 255, 0.25);
+  border-color: rgba(74, 158, 255, 0.5);
+}
+
+/* Location Tab Selector */
+.location-tab-select {
+  display: flex;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 0.75rem;
+  padding: 0.25rem;
+  margin-bottom: 1rem;
+  direction: ltr !important;
+}
+
+.location-tab-option {
+  flex: 1;
+  text-align: center;
+  padding: 0.5rem 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.location-tab-option span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.location-tab-option i {
+  font-size: 1rem;
+}
+
+.location-tab-option:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.location-tab-option:has(input:checked) {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.location-tab-option input {
+  display: none;
+}
+
+/* Tab Content */
+.location-tab-content {
+  display: none;
+  overflow-x: hidden;
+  min-height: 48vh; /* Consistent height across all tabs */
+}
+
+.location-tab-content.active {
+  display: block;
+}
+
+/* Map Tab */
+.location-map {
+  width: 100%;
+  height: 200px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  margin-bottom: 0.75rem;
+}
+
+.map-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.5);
+  gap: 0.5rem;
+}
+
+.map-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.map-coords {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.3rem;
+}
+
+.map-confirm-btn {
+  background: #4a9eff;
+  border: none;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.map-confirm-btn:hover {
+  background: #3a8eef;
+  transform: scale(1.02);
+}
+
+/* Search Tabs */
+.location-search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.location-select {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  padding: 0.5rem 0.4rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  width: 75px;
+  min-width: 75px;
+  max-width: 75px;
+  flex-shrink: 0;
+  text-overflow: ellipsis;
+}
+
+.location-select option {
+  background: #1a1f2e;
+  color: white;
+}
+
+.location-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+.location-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.location-input.city-input {
+  min-width: 0;
+}
+
+.location-search-btn {
+  background: #4a9eff;
+  border: none;
+  color: white;
+  width: 38px;
+  min-width: 38px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.location-search-btn:hover {
+  background: #3a8eef;
+}
+
+/* Result Area */
+.location-result-area {
+  min-height: 60px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.location-result-area .loading {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+.location-result-area .error {
+  color: #ff6b6b;
+  font-size: 0.85rem;
+}
+
+.location-result {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.location-result .result-name {
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.location-result .result-coords {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 0.5rem;
+}
+
+.location-result .apply-btn {
+  background: #4a9eff;
+  border: none;
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.location-result .apply-btn:hover {
+  background: #3a8eef;
+}
+
+/* City Results List */
+.location-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Update Result Items to look clickable */
+.location-result-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.8rem 1rem; /* Slightly larger touch area */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  /* Add layout for the checkmark icon we will add in JS */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.location-result-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #4a9eff;
+  transform: translateX(5px); /* Slide effect on hover */
+}
+
+.location-result-item .result-name {
+  font-size: 0.85rem;
+  margin-bottom: 0.2rem;
+  line-height: 1.3;
+}
+
+.location-result-item .result-coords {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.location-hint {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0.5rem 0 0;
+  text-align: center;
+}
+
+/* Location button indicator */
+.control-btn.location-btn {
+  position: relative;
+}
+
+.control-btn.location-btn.custom-location {
+  background: rgba(74, 158, 255, 0.25);
+  border-color: rgba(74, 158, 255, 0.5);
+}
+
+.control-btn.location-btn.custom-location::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background: #4a9eff;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+}
+
+/* Location Popup Responsiveness */
+@media (max-width: 450px) {
+  #location-wrapper {
+    right: 50%;
+    transform: translateX(50%);
+    width: 92vw;
+    bottom: calc(var(--nav-height) + 1rem);
+  }
+  
+  .location-container {
+    min-width: auto;
+    max-width: none;
+  }
+}
+
+@media (max-height: 650px) {
+  .location-map {
+    height: 150px;
+  }
+}
+
+@media (max-height: 600px) {
+  .location-map {
+    height: 120px;
+  }
+}
+
+@media (max-height: 520px) {
+  #location-wrapper {
+    bottom: 1rem;
+  }
+  
+  .location-map {
+    height: 100px;
+  }
+}
+
+#location-wrapper { 
+  animation: slideUp 0.3s ease-out backwards; 
+}
+
+@media (max-width: 450px) {
+  #location-wrapper { 
+    animation: none; /* Simpler on mobile to avoid transform conflicts */
+  }
+}
+
+/* ============================================================================
+   Leaflet Map Overrides
+   ============================================================================ */
+
+.leaflet-container {
+  background: #2d3748 !important;
+}
+
+.leaflet-tile-container {
+  background: transparent;
+}
+
+.leaflet-tile {
+  transition: opacity 0.2s ease;
+}
+
+.leaflet-tile-loaded {
+  opacity: 1 !important;
+}
+
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.leaflet-control-attribution a {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(30, 40, 60, 0.9) !important;
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: rgba(50, 60, 80, 0.95) !important;
+}
