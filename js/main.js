@@ -303,6 +303,30 @@ function setupSpeedButtons() {
 // Toolbar Toggle
 // ============================================================================
 
+// ============================================================================
+// Terrain Mode Toggle (Compass View)
+// ============================================================================
+
+function setupTerrainToggle() {
+  const terrainBtn = document.getElementById('btn-terrain');
+  if (!terrainBtn) return;
+  
+  // Check for saved preference
+  const savedMode = localStorage.getItem('compassMode');
+  if (savedMode === 'true') {
+    document.body.classList.add('compass-mode');
+    terrainBtn.classList.add('active');
+  }
+  
+  terrainBtn.addEventListener('click', () => {
+    const isActive = document.body.classList.toggle('compass-mode');
+    terrainBtn.classList.toggle('active', isActive);
+    
+    // Save preference
+    localStorage.setItem('compassMode', isActive);
+  });
+}
+
 // main.js
 
 function setupToolbarToggle() {
@@ -660,6 +684,7 @@ async function init() {
   setupDayButtons();
   setupSpeedButtons();
   setupToolbarToggle();
+  setupTerrainToggle();
   setupCalendarEvents();
   setupLocationChangeHandler();
   

@@ -52,6 +52,33 @@
                 <path id="land-mid" class="land-layer" d="" />
                 <path id="land-front" class="land-layer" d="" />
             </svg>
+            
+            <!-- Compass overlay (visible in compass mode) -->
+            <div class="compass-overlay" id="compass-overlay">
+                <svg class="compass-svg" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
+                    <!-- Outer ellipse ring (perspective view - flat on ground) -->
+                    <ellipse cx="200" cy="100" rx="180" ry="70" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+                    
+                    <!-- Direction labels - N at top (away), S at bottom (near), E on right, W on left -->
+                    <text x="200" y="22" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="20" font-weight="700">N</text>
+                    <text x="200" y="190" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="20" font-weight="700">S</text>
+                    <text x="250" y="105" text-anchor="start" fill="rgba(255,255,255,1)" font-size="20" font-weight="700">E</text>
+                    <text x="150" y="105" text-anchor="end" fill="rgba(255,255,255,1)" font-size="20" font-weight="700">W</text>
+                    
+                    <!-- Intercardinal labels -->
+                    <text x="320" y="45" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="15">NE</text>
+                    <text x="80" y="45" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="15">NW</text>
+                    <text x="320" y="165" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="15">SE</text>
+                    <text x="80" y="165" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="15">SW</text>
+                    
+                    <!-- Compass center point -->
+                    <circle cx="200" cy="100" r="6" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+                    
+                    <!-- Compass needle pointing North (foreshortened due to perspective) -->
+                    <polygon points="200,35 205,90 200,100 195,90" fill="#e74c3c" opacity="0.85"/>
+                    <polygon points="200,165 205,110 200,100 195,110" fill="rgba(255,255,255,0.5)"/>
+                </svg>
+            </div>
         </div>
 
         <!-- Person silhouette -->
@@ -86,6 +113,14 @@
         
         <!-- Controls container (hidden by default) -->
         <div class="controls-container" id="controls-container">
+
+            <!-- Terrain mode toggle button -->
+            <div class="button-group terrain-group">
+                <button class="control-btn terrain-btn" id="btn-terrain" title="Toggle Compass View">
+                    <i class="fa-regular fa-compass"></i>
+                </button>
+            </div>
+
             <!-- Reset button - separate group on far left -->
             <div class="button-group reset-group">
                 <button class="control-btn reset-btn" id="btn-reset" title="Reset to now">

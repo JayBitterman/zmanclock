@@ -65,7 +65,7 @@
   /* Layout Variables - ORIGINAL */
   --nav-height: 20vmin;
   --calendar-gap: 2vmin;
-  --terrain-height: 30dvh;
+  --terrain-height: 30vh;
 }
 
 /* ============================================================================
@@ -133,7 +133,6 @@ body {
   height: 100%;
   border-radius: 50%;
   border: 0.4vmin solid var(--clock-border);
-  background: var(--clock-bg);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 
@@ -857,6 +856,138 @@ body {
 #land-mid { fill: #494238; }
 #land-front { fill: #433d33; }
 
+/* ============================================================================
+   Compass Mode - Extended Terrain View
+   ============================================================================ */
+
+/* Terrain/Compass button - positioned above other controls on the left */
+.button-group.terrain-group {
+  position: absolute;
+  left: 2.5vmin;
+  bottom: 15vmin;
+}
+
+/* Compass overlay (hidden by default) */
+.compass-overlay {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 600px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+  z-index: 30;
+  height: 0;
+  left: 49.45%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compass-svg {
+  width: 52.3vmin;
+  height: auto;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+}
+
+.compass-svg text {
+  font-family: 'Inter', 'Heebo', sans-serif;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+/* Compass mode active state */
+body.compass-mode .compass-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Terrain extends up to clock center in compass mode */
+body.compass-mode .terrain-container {
+  height: 50dvh;
+  opacity: 0.9;
+  transition: height 0.5s ease, opacity 0.5s ease;
+  /* Solid background to hide sky/clouds behind */
+  background: linear-gradient(to bottom, #3a352c 0%, #433d33 100%);
+  z-index: 20;
+}
+
+/* Hide the SVG paths in compass mode - we use flat background instead */
+body.compass-mode #land-svg {
+  opacity: 0;
+}
+
+body.compass-mode #vegetation-layer {
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+  z-index: 21;
+}
+
+body.compass-mode .person-wrapper {
+  bottom: 10%;
+  opacity: 0.8;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+  z-index: 21;
+}
+
+/* Hide horizon glow in compass mode */
+body.compass-mode .horizon-glow {
+  opacity: 0 !important;
+}
+
+/* Hide weather effects behind terrain in compass mode */
+body.compass-mode #weather-effects {
+  clip-path: inset(0 0 50dvh 0);
+}
+
+body.compass-mode #cloud-container {
+  clip-path: inset(0 0 50dvh 0);
+}
+
+body.compass-mode #sky-effects {
+  clip-path: inset(0 0 50dvh 0);
+}
+
+/* Ensure rain/snow don't show below terrain line */
+body.compass-mode .rain-container,
+body.compass-mode .snow-container {
+  clip-path: inset(0 0 50dvh 0);
+}
+
+/* Fog should not show in compass mode */
+body.compass-mode .fog-layer {
+  opacity: 0 !important;
+}
+
+/* Terrain button active state */
+.control-btn.terrain-btn.active {
+  background: rgba(74, 158, 255, 0.25);
+  border-color: rgba(74, 158, 255, 0.5);
+}
+
+.control-btn.terrain-btn.active i {
+  color: #4a9eff;
+}
+
+/* Normal terrain state transitions */
+.terrain-container {
+  transition: height 0.5s ease, opacity 0.5s ease, filter 0.5s ease, background 0.5s ease;
+  background: transparent;
+}
+
+#land-svg {
+  transition: opacity 0.5s ease;
+}
+
+#vegetation-layer {
+  transition: height 0.5s ease, opacity 0.5s ease, filter 0.5s ease;
+}
+
+.person-wrapper {
+  transition: opacity 0.5s ease, bottom 0.5s ease, filter 0.5s ease;
+}
+
 .grass-blade {
   position: absolute;
   width: 2px;
@@ -1124,7 +1255,7 @@ body {
   position: fixed;
   bottom: 2vmin;
   right: 2vmin;
-  z-index: 20;
+  z-index: 40;
   width: 12vmin;
   height: 12vmin;
   max-width: 56px;
@@ -1174,7 +1305,7 @@ body {
   bottom: 1vmin;
   left: 0;
   right: 0;
-  z-index: 16;
+  z-index: 40;
   padding: 2vmin;
   padding-right: 80px; /* Leave space for toolbar toggle */
   display: flex;
