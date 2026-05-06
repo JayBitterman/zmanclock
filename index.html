@@ -7,6 +7,29 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Zman Clock</title>
+
+    <!-- Open TLS connections to all third-party origins in parallel so module
+         and font fetches don't pay the handshake cost serially. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Start fetching every local module in parallel rather than waterfalling
+         through the import graph at runtime. -->
+    <link rel="modulepreload" href="js/main.js">
+    <link rel="modulepreload" href="js/config.js">
+    <link rel="modulepreload" href="js/astronomy.js">
+    <link rel="modulepreload" href="js/clock.js">
+    <link rel="modulepreload" href="js/ui.js">
+    <link rel="modulepreload" href="js/hebrew.js">
+    <link rel="modulepreload" href="js/scene.js">
+    <link rel="modulepreload" href="js/weather.js">
+    <link rel="modulepreload" href="js/location.js">
+    <link rel="modulepreload" href="js/calendar.js">
+    <link rel="modulepreload" href="js/kidushLevana.js">
+    <link rel="modulepreload" href="js/zodiac.js">
+
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="clock_gradient_icon.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -41,6 +64,9 @@
 
         <!-- Horizon glow -->
         <div class="horizon-glow"></div>
+
+        <!-- Zodiac constellation layer -->
+        <div id="zodiac-layer" aria-hidden="true"></div>
 
         <!-- Vegetation layer (trees, bushes) -->
         <div id="vegetation-layer"></div>
@@ -96,13 +122,21 @@
         <!-- Digital time display (top right) -->
         <div id="digital-times">
             <div id="digital-time"></div>
-            <div id="seasonal-time"></div>
-            <div id="day-of-week"></div>
+            <div id="seasonal-row">
+                <span id="seasonal-time"></span>
+                <span id="day-of-week"></span>
+            </div>
+            <div id="kidush-levana">
+                <span class="kl-hebrew"></span>
+                <span class="kl-number"></span>
+                <span class="kl-emoji"></span>
+            </div>
         </div>
         
         <!-- Hebrew date info (top left) -->
         <div id="week-info">
             <div id="date"></div>
+            <div id="parsha"></div>
             <div id="holiday"></div>
             <div id="omer"></div>
             <div id="location-display" style="color: var(--cal-accent); font-size: 2.5vmin; margin-top: 0.5vmin; font-weight: 500; text-shadow: var(--text-shadow);"></div>
@@ -114,9 +148,9 @@
         <!-- Controls container (hidden by default) -->
         <div class="controls-container" id="controls-container">
 
-            <!-- Terrain mode toggle button -->
+            <!-- Compass mode toggle (also reveals the zodiac overlay) -->
             <div class="button-group terrain-group">
-                <button class="control-btn terrain-btn" id="btn-terrain" title="Toggle Compass View">
+                <button class="control-btn terrain-btn" id="btn-terrain" title="Toggle Compass &amp; Zodiac View">
                     <i class="fa-regular fa-compass"></i>
                 </button>
             </div>

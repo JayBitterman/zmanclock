@@ -13,16 +13,25 @@
    ============================================================================ */
 
 :root {
+  /* Unified Font Stacks - Heebo first so Hebrew + Latin share style */
+  --font-hebrew: 'Heebo', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Heebo', monospace;
+
+  /* Single source of truth for the visible clock face diameter.
+     Compass-svg width is derived from this so the ellipse always sits
+     concentric with the clock numerals. */
+  --clock-size: 50vmin;
+
   /* Clock & UI Colors */
   --clock-border: rgba(255, 255, 255, 0.15);
   --clock-bg: rgba(0, 0, 0, 0.2);
   --text-color: white;
   
-  /* Luxury Clock Hand Colors - Blued Steel Look */
-  --hand-color: #1a1a2e;
-  --hand-highlight: #4a4a6a;
-  --hand-accent: #2d2d44;
-  --hand-shine: rgba(255, 255, 255, 0.4);
+  /* Luxury Clock Hand Colors - Polished Blued Steel (slightly brightened) */
+  --hand-color: #2c2c4a;
+  --hand-highlight: #7878a0;
+  --hand-accent: #44446a;
+  --hand-shine: rgba(255, 255, 255, 0.6);
 
   /* Dynamic Atmosphere Variables (Updated by JS) */
   --sky-top: #000000;
@@ -62,8 +71,8 @@
   --cal-selected: #22c55e;
   --cal-hover: rgba(74, 158, 255, 0.2);
   
-  /* Layout Variables - ORIGINAL */
-  --nav-height: 20vmin;
+  /* Layout Variables — toolbar pill is ~11vmin tall sitting 2vmin off bottom */
+  --nav-height: 13vmin;
   --calendar-gap: 2vmin;
   --terrain-height: 30vh;
 }
@@ -84,7 +93,7 @@ body {
   width: 100dvw;
   margin: 0;
   background-color: black;
-  font-family: 'Inter', 'Heebo', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-hebrew);
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
@@ -92,7 +101,7 @@ body {
 }
 
 [lang="he"], .hebrew-text {
-  font-family: 'Heebo', 'Inter', sans-serif;
+  font-family: var(--font-hebrew);
 }
 
 #screen {
@@ -112,18 +121,16 @@ body {
    ============================================================================ */
 
 .clock {
-  width: 50vmin;
-  height: 50vmin;
+  width: var(--clock-size);
+  height: var(--clock-size);
   position: relative;
   margin: auto;
 }
 
 .clock-container {
   position: relative;
-  width: 80vmin;
-  height: 80vmin;
-  max-width: 95%;
-  max-height: 95%;
+  width: 100%;
+  height: 100%;
 }
 
 .clock-face {
@@ -223,20 +230,20 @@ body {
   height: 3vmin;
   border-radius: 50%;
   
-  /* Multi-layered concentric design */
-  background: 
+  /* Multi-layered concentric design — slightly brighter to match the hand */
+  background:
     /* Polished dome with highlight */
     radial-gradient(circle at 35% 35%,
-      rgba(255, 255, 255, 0.5) 0%,
-      rgba(255, 255, 255, 0.1) 20%,
+      rgba(255, 255, 255, 0.65) 0%,
+      rgba(255, 255, 255, 0.2) 20%,
       transparent 50%
     ),
     /* Main cap body */
     radial-gradient(circle at 40% 40%,
-      #666680 0%,
-      #3d3d54 40%,
-      #1a1a2e 70%,
-      #000 100%
+      #8888a8 0%,
+      #5a5a78 40%,
+      #2c2c4a 70%,
+      #050511 100%
     );
     
   z-index: 11;
@@ -252,7 +259,7 @@ body {
   transform-origin: center;
   font-size: 3.5vmin;
   font-weight: 500;
-  font-family: 'Heebo', sans-serif;
+  font-family: var(--font-hebrew);
   text-shadow: var(--text-shadow);
   opacity: 0.9;
 }
@@ -317,21 +324,128 @@ body {
   position: absolute;
   color: var(--text-color);
   text-align: center;
-  font-size: 2.2vmin;
-  font-weight: 700; /* Increased weight for legibility */
-  font-family: 'Heebo', 'Inter', sans-serif;
-  letter-spacing: 0.02em;
+  font-size: 2.4vmin;
+  font-weight: 600;
+  font-family: var(--font-hebrew);
+  letter-spacing: 0.01em;
+  line-height: 1.1;
   transition: color 0.3s ease;
-  
-  /* REMOVED: background, padding, backdrop-filter */
-  
-  /* NEW: Strong stroke/outline effect for readability against clouds */
-  text-shadow: 
-    -1px -1px 0 #000,  
-    1px -1px 0 #000,
-    -1px 1px 0 #000,
-    1px 1px 0 #000,
-    0 2px 4px rgba(0,0,0,0.8);
+
+  /* Crisp stroke (rendered behind fill) — sharper than multi-shadow stacks
+     which compound into a fuzzy halo against bright daytime sky. */
+  paint-order: stroke fill;
+  -webkit-text-stroke: 0.45vmin rgba(0, 0, 0, 0.92);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+
+/* In compass mode the terrain panel sits at z-index 20; lift sun-times
+   above it so the lower-half zmanim don't disappear behind the brown bg. */
+body.compass-mode .sun-time {
+  z-index: 25;
+}
+
+/* ============================================================================
+   Zodiac Constellation Layer
+   ============================================================================ */
+
+#zodiac-layer {
+  position: absolute;
+  top: 50dvh;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  display: none;
+}
+
+/* Compass mode now also reveals the zodiac overlay (single toggle drives both) */
+body.compass-mode #zodiac-layer {
+  display: block;
+}
+
+.zodiac {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: clamp(46px, 8.5vmin, 88px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25vmin;
+  color: rgba(245, 249, 255, 0.92);
+  text-align: center;
+  will-change: left, top, opacity;
+  transition: opacity 0.4s ease, filter 0.4s ease;
+}
+
+.zodiac.above-horizon {
+  z-index: 28;
+  opacity: 0.94;
+  filter:
+    drop-shadow(0 0 0.8vmin rgba(180, 215, 255, 0.36))
+    drop-shadow(0 0.2vmin 0.5vmin rgba(0, 0, 0, 0.75));
+}
+
+.zodiac.below-horizon {
+  z-index: 3;
+  opacity: var(--zodiac-ghost-opacity, 0.72);
+  filter:
+    saturate(0.95)
+    brightness(1.2)
+    drop-shadow(0 0 0.7vmin rgba(190, 225, 255, 0.38));
+}
+
+.zodiac-illustration {
+  width: clamp(32px, 5.2vmin, 64px);
+  height: clamp(32px, 5.2vmin, 64px);
+}
+
+.zodiac-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.zodiac-line {
+  stroke: rgba(226, 236, 255, 0.55);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.zodiac-star {
+  fill: rgba(252, 254, 255, 0.98);
+}
+
+.zodiac-star-glow {
+  fill: rgba(150, 205, 255, 0.22);
+}
+
+.zodiac-name {
+  font-family: var(--font-hebrew);
+  font-size: clamp(10px, 1.45vmin, 16px);
+  font-weight: 600;
+  line-height: 1;
+  color: rgba(246, 249, 255, 0.9);
+  direction: rtl;
+  white-space: nowrap;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.95),
+    0 0 0.8vmin rgba(25, 40, 65, 0.8);
+}
+
+/* Stale .zodiac-btn.active rules removed — the dedicated button is gone and
+   the compass button's existing .terrain-btn.active styling already handles
+   the on-state for both layers. */
+
+body.zodiac-mode:not(.compass-mode) .terrain-container {
+  opacity: 0.78;
+}
+
+body.zodiac-mode.compass-mode .terrain-container {
+  opacity: 0.8;
 }
 
 /* ============================================================================
@@ -817,7 +931,7 @@ body {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 50vh;
+  height: 50dvh;
   background: radial-gradient(ellipse at center bottom, var(--horizon-glow-color, #ffaa00) 0%, transparent 70%);
   opacity: var(--horizon-glow-opacity, 0);
   pointer-events: none;
@@ -835,10 +949,12 @@ body {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 35vh;
+  /* Horizon must meet the clock center (50dvh of #screen). dvh — not vh —
+     so it stays aligned when mobile chrome shows/hides the URL bar. */
+  height: 50dvh;
   z-index: 4;
   pointer-events: none;
-  filter: brightness(max(0.35, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1)))) contrast(var(--terrain-contrast, 1));
+  filter: brightness(max(0.7, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1)))) contrast(var(--terrain-contrast, 1));
   transition: filter 0.5s ease;
 }
 
@@ -860,41 +976,42 @@ body {
    Compass Mode - Extended Terrain View
    ============================================================================ */
 
-/* Terrain/Compass button - positioned above other controls on the left */
+/* Compass/terrain group sits inline within the toolbar pill (no longer floats) */
 .button-group.terrain-group {
-  position: absolute;
-  left: 2.5vmin;
-  bottom: 15vmin;
+  position: relative;
+  left: auto;
+  bottom: auto;
 }
 
-/* Compass overlay (hidden by default) */
+/* Compass overlay (hidden by default) — center sits at top of terrain (= 50dvh
+   = clock center). Width derives from --clock-size so the ellipse stays
+   concentric with the clock numerals. */
 .compass-overlay {
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
-  max-width: 600px;
+  height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.5s ease, visibility 0.5s ease;
   z-index: 30;
-  height: 0;
-  left: 49.45%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .compass-svg {
-  width: 52.3vmin;
+  /* Ellipse rx is 90% of viewBox width (180/200 half-width). Multiplying the
+     clock diameter by 1.11 makes the ellipse diameter equal the clock face. */
+  width: calc(var(--clock-size) * 1.11);
   height: auto;
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
 }
 
 .compass-svg text {
-  font-family: 'Inter', 'Heebo', sans-serif;
+  font-family: var(--font-hebrew);
   text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
 
@@ -904,13 +1021,15 @@ body.compass-mode .compass-overlay {
   visibility: visible;
 }
 
-/* Terrain extends up to clock center in compass mode */
+/* Terrain extends up to clock center in compass mode. Compass is functional
+   so we drop the time-of-day brightness filter and use a lighter gradient
+   that's always readable. */
 body.compass-mode .terrain-container {
   height: 50dvh;
-  opacity: 0.9;
-  transition: height 0.5s ease, opacity 0.5s ease;
-  /* Solid background to hide sky/clouds behind */
-  background: linear-gradient(to bottom, #3a352c 0%, #433d33 100%);
+  opacity: 0.92;
+  transition: height 0.5s ease, opacity 0.5s ease, filter 0.5s ease;
+  background: linear-gradient(to bottom, #5a5446 0%, #6b6354 100%);
+  filter: none;
   z-index: 20;
 }
 
@@ -924,10 +1043,16 @@ body.compass-mode #vegetation-layer {
   z-index: 21;
 }
 
+/* In compass mode, tuck the person into the bottom-right corner of the
+   compass panel so it doesn't cover chatzosLayla / lower-half zmanim. */
 body.compass-mode .person-wrapper {
-  bottom: 10%;
-  opacity: 0.8;
-  transition: opacity 0.5s ease, visibility 0.5s ease;
+  bottom: 1vmin;
+  left: auto;
+  right: 4vmin;
+  transform: scale(0.65);
+  transform-origin: bottom right;
+  opacity: 0.85;
+  transition: opacity 0.5s ease, transform 0.5s ease;
   z-index: 21;
 }
 
@@ -1012,10 +1137,12 @@ body.compass-mode .fog-layer {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 35vh;
+  /* dvh, not vh — keep the foliage band aligned with the horizon line on
+     mobile when the URL bar shows/hides. */
+  height: 50dvh;
   pointer-events: none;
   z-index: 5;
-  filter: brightness(max(0.35, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1))));
+  filter: brightness(max(0.7, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1))));
   transition: filter 0.5s ease;
 }
 
@@ -1081,7 +1208,7 @@ body.compass-mode .fog-layer {
   width: 8vmin;
   height: 20vmin;
   pointer-events: none;
-  filter: brightness(max(0.4, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1))));
+  filter: brightness(max(0.6, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1))));
   transition: filter 0.5s ease;
 }
 
@@ -1105,6 +1232,23 @@ body.compass-mode .fog-layer {
   animation: headBob 7s ease-in-out infinite alternate;
 }
 
+/* Yarmulka — solid black cap on the crown. Hidden when the winter coat's
+   hood is active so we never stack a cap on a hood. */
+.hat {
+  position: absolute;
+  top: -0.25vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3vmin;
+  height: 1.05vmin;
+  background: #000;
+  border-radius: 50% 50% 30% 30% / 100% 100% 30% 30%;
+  box-shadow: 0 0.15vmin 0.3vmin rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.person.winter-coat .hat { display: none; }
+
 .body {
   width: 5.5vmin;
   height: 8vmin;
@@ -1112,7 +1256,36 @@ body.compass-mode .fog-layer {
   border-radius: 2vmin 2vmin 0 0;
   margin-top: -0.5vmin;
   z-index: 1;
+  position: relative;
   transition: all 0.5s ease;
+}
+
+/* Tzitzis — four off-white strands hanging from below the body's bottom
+   corners. Sway tied to wind-intensity so they move with the trees. */
+.body::before,
+.body::after {
+  content: '';
+  position: absolute;
+  bottom: -1.6vmin;
+  width: 0.25vmin;
+  height: 1.6vmin;
+  background: linear-gradient(to bottom,
+    rgba(244, 236, 208, 0.95) 0%,
+    rgba(220, 210, 175, 0.85) 70%,
+    rgba(200, 190, 155, 0.7) 100%);
+  border-radius: 0 0 0.15vmin 0.15vmin;
+  transform-origin: top center;
+  animation: tzitzisSway calc(2.5s / var(--wind-intensity, 1)) ease-in-out infinite alternate;
+  box-shadow: 0.12vmin 0 0 rgba(244, 236, 208, 0.7),
+              -0.12vmin 0 0 rgba(244, 236, 208, 0.7);
+}
+
+.body::before { left: 0.4vmin; animation-delay: -0.4s; }
+.body::after  { right: 0.4vmin; animation-delay: -0.9s; }
+
+@keyframes tzitzisSway {
+  0%   { transform: rotate(calc(-4deg * var(--wind-intensity, 1))); }
+  100% { transform: rotate(calc(4deg * var(--wind-intensity, 1))); }
 }
 
 .person.sweater .body {
@@ -1181,31 +1354,64 @@ body.compass-mode .fog-layer {
 #digital-time {
   color: var(--text-color);
   font-size: 4.5vmin;
-  font-family: 'JetBrains Mono', 'Inter', monospace;
+  font-family: var(--font-mono);
   font-weight: 500;
   text-align: right;
   text-shadow: var(--text-shadow);
   letter-spacing: 0.05em;
 }
 
+/* Seasonal time + day-of-week share a row, packed to the right edge of the
+   digital-times column. Seasonal time on the left of the row, day name on
+   the right. */
+#seasonal-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 1vmin;
+  margin-top: 0.2vmin;
+}
+
 #seasonal-time {
   color: var(--text-color);
   text-shadow: var(--text-shadow);
   font-size: 4vmin;
-  font-family: 'Heebo', sans-serif;
+  font-family: var(--font-hebrew);
   font-weight: 400;
-  text-align: right;
   opacity: 0.9;
 }
 
 #day-of-week {
   color: var(--text-color);
   font-size: 4vmin;
-  font-family: 'Heebo', sans-serif;
+  font-family: var(--font-hebrew);
   font-weight: 500;
-  text-align: right;
+  text-shadow: var(--text-shadow);
+}
+
+/* Kiddush Levana row — three zones aligned along a single right-anchored
+   line: Hebrew day-count on the left, H:MM:SS number in the middle, emoji
+   on the right. Color (set inline by JS) applies only to .kl-number. */
+#kidush-levana {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.6vmin;
+  font-family: var(--font-hebrew);
+  font-size: 3vmin;
+  font-weight: 600;
   text-shadow: var(--text-shadow);
   margin-top: 0.5vmin;
+  white-space: nowrap;
+}
+
+#kidush-levana .kl-hebrew {
+  color: var(--text-color);
+}
+
+#kidush-levana .kl-number {
+  /* color set inline by JS — green pre-11d, red after */
+  font-variant-numeric: tabular-nums; /* H:MM:SS columns don't jitter */
 }
 
 #week-info {
@@ -1219,16 +1425,29 @@ body.compass-mode .fog-layer {
 #date {
   color: var(--text-color);
   font-size: 4.5vmin;
-  font-family: 'Heebo', sans-serif;
+  font-family: var(--font-hebrew);
   font-weight: 600;
   text-align: left;
   text-shadow: var(--text-shadow);
 }
 
+#parsha {
+  color: var(--text-color);
+  font-size: 3.5vmin;
+  font-family: var(--font-hebrew);
+  font-weight: 500;
+  text-align: left;
+  text-shadow: var(--text-shadow);
+  opacity: 0.95;
+  margin-top: 0.3vmin;
+}
+
+#parsha:empty { display: none; }
+
 #holiday {
   color: var(--text-color);
   font-size: 3.5vmin;
-  font-family: 'Heebo', sans-serif;
+  font-family: var(--font-hebrew);
   font-weight: 400;
   text-align: left;
   text-shadow: var(--text-shadow);
@@ -1238,7 +1457,7 @@ body.compass-mode .fog-layer {
 #omer {
   color: var(--text-color);
   font-size: 3vmin;
-  font-family: 'Heebo', sans-serif;
+  font-family: var(--font-hebrew);
   font-weight: 400;
   text-align: left;
   text-shadow: var(--text-shadow);
@@ -1299,74 +1518,89 @@ body.compass-mode .fog-layer {
   transform: rotate(90deg);
 }
 
-/* Controls container - hidden by default, MOVED DOWN more */
+/* Controls container — single rounded pill anchored just left of the toggle.
+   Expands leftward when toggled; never overlaps the toolbar-toggle. */
 .controls-container {
   position: fixed;
-  bottom: 1vmin;
-  left: 0;
-  right: 0;
+  bottom: 2vmin;
+  /* Toolbar toggle is up to 56px wide at right: 2vmin — leave a 1vmin gap. */
+  right: calc(2vmin + 56px + 1vmin);
   z-index: 40;
-  padding: 2vmin;
-  padding-right: 80px; /* Leave space for toolbar toggle */
+
   display: flex;
-  justify-content: center;
   align-items: center;
-  gap: 4vmin;
+
+  /* Unified pill background; button-groups sit inside as separated chambers */
+  background: rgba(20, 25, 35, 0.55);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 0.6vmin 0.6vmin;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+
+  /* Cap to viewport so the pill always fits, with internal scroll on tiny screens */
+  max-width: calc(100vw - 56px - 6vmin);
+  overflow-x: auto;
+  scrollbar-width: none;
+
   opacity: 0;
   visibility: hidden;
-  transform: translateY(20px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(12px);
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
+
+.controls-container::-webkit-scrollbar { display: none; }
 
 .controls-container.visible {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: translateX(0);
   pointer-events: auto;
 }
 
-/* Button Groups */
+/* Button Groups — chambered with thin separator on the right */
 .button-group {
   display: flex;
-  gap: 1.5vmin;
+  gap: 0.4vmin;
   align-items: center;
   position: relative;
+  padding: 0 0.8vmin;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
+.button-group:last-child { border-right: none; padding-right: 0.4vmin; }
+.button-group:first-child { padding-left: 0.4vmin; }
 
-/* Reset button group - positioned on far left */
-.button-group.reset-group {
-  position: absolute;
-  right: 2.5vmin;
-  bottom: 15vmin;
-}
+/* Hide the entire reset chamber (and its separator) when reset isn't active */
+.button-group.reset-group { display: none; }
+.button-group.reset-group:has(.reset-btn.visible) { display: flex; }
 
-/* Speed group - relative positioning for speed indicator */
+/* Speed group keeps relative positioning for the speed indicator overlay */
 .button-group.speed-group {
   position: relative;
 }
 
-/* Modern Button Style */
+/* Compact Button Style — smaller now that they share a pill */
 .control-btn {
-  width: 11vmin;
-  height: 11vmin;
-  max-width: 52px;
-  max-height: 52px;
-  min-width: 40px;
-  min-height: 40px;
+  width: 8.5vmin;
+  height: 8.5vmin;
+  max-width: 40px;
+  max-height: 40px;
+  min-width: 34px;
+  min-height: 34px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
   color: white;
-  font-size: 4vmin;
+  font-size: 3.4vmin;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
   padding: 0;
   margin: 0;
 }
@@ -1387,55 +1621,52 @@ body.compass-mode .fog-layer {
   pointer-events: none;
 }
 
-/* Reset button */
+/* Reset button — visibility now driven by .reset-group :has() rule */
 .control-btn.reset-btn {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.3);
-  display: none;
-}
-
-.control-btn.reset-btn.visible {
-  display: flex;
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.35);
 }
 
 .control-btn.reset-btn:hover {
-  background: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.32);
 }
 
-/* Calendar button in toolbar */
+/* Calendar button in toolbar — match other compact buttons */
 .control-btn.calendar-btn {
   position: relative;
   bottom: auto;
   right: auto;
-  width: 11vmin;
-  height: 11vmin;
-  max-width: 52px;
-  max-height: 52px;
-  min-width: 40px;
-  min-height: 40px;
-  font-size: 4.5vmin;
+  width: 8.5vmin;
+  height: 8.5vmin;
+  max-width: 40px;
+  max-height: 40px;
+  min-width: 34px;
+  min-height: 34px;
+  font-size: 3.6vmin;
 }
 
-/* Speed indicator */
+/* Speed indicator — inline pill chip, lives between the two speed buttons.
+   Inline avoids being clipped by the toolbar pill's overflow cap. */
 .speed-indicator {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 1vmin;
-  font-size: 2.5vmin;
-  color: rgba(255, 255, 255, 0.9);
-  font-family: 'JetBrains Mono', monospace;
+  font-size: 2.2vmin;
+  min-width: 0;
+  max-width: 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: var(--font-mono);
+  font-weight: 500;
   white-space: nowrap;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 999px;
   opacity: 0;
-  transition: opacity 0.2s ease;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 0.5vmin 1vmin;
-  border-radius: 1vmin;
+  overflow: hidden;
+  transition: opacity 0.2s ease, max-width 0.2s ease, padding 0.2s ease;
 }
 
 .speed-indicator.visible {
   opacity: 1;
+  max-width: 12vmin;
+  padding: 0.3vmin 0.8vmin;
 }
 
 /* Hide legacy navigators */
@@ -1722,14 +1953,24 @@ body.compass-mode .fog-layer {
     width: 92vw;
     bottom: calc(var(--nav-height) + 1rem);
   }
-  
+
   .controls-container {
-    gap: 2vmin;
+    /* Tighter chambering on narrow screens so all buttons stay reachable */
+    padding: 0.5vmin 0.4vmin;
+    right: calc(2vmin + 44px + 1vmin); /* toggle is 44px min on small phones */
+    max-width: calc(100vw - 44px - 5vmin);
   }
-  
-  .control-btn {
-    width: 10vmin;
-    height: 10vmin;
+
+  .button-group {
+    padding: 0 0.5vmin;
+    gap: 0.3vmin;
+  }
+
+  .control-btn,
+  .control-btn.calendar-btn {
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 14px;
   }
 }
 
@@ -1864,7 +2105,7 @@ body.compass-mode .fog-layer {
 
 #location-wrapper {
   position: fixed;
-  bottom: calc(15vmin + 1rem);
+  bottom: calc(var(--nav-height) + 1rem);
   right: 2vmin;
   z-index: 26;
   max-height: 85vh;
@@ -2017,7 +2258,7 @@ body.compass-mode .fog-layer {
 }
 
 .map-coords {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.7);
   background: rgba(0, 0, 0, 0.3);
@@ -2146,7 +2387,7 @@ body.compass-mode .fog-layer {
 }
 
 .location-result .result-coords {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.5);
   margin-bottom: 0.5rem;
@@ -2202,7 +2443,7 @@ body.compass-mode .fog-layer {
 }
 
 .location-result-item .result-coords {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.4);
 }

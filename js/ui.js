@@ -58,9 +58,9 @@ export function setDigitalTimes() {
   const seasonalHour = Math.floor(totalSeasonalMinutes / 60);
   const seasonalMinute = Math.floor(totalSeasonalMinutes % 60);
   const fractionalMinute = totalSeasonalMinutes % 1;
-  const totalChalakim = Math.floor(fractionalMinute * 18);
-  
-  const stimeString = `${seasonalHour}:${seasonalMinute.toString().padStart(2, '0')}:${totalChalakim.toString().padStart(2, '0')} ${isDay ? 'ביום' : 'בלילה'}`;
+  const seasonalSecond = Math.floor(fractionalMinute * 60);
+
+  const stimeString = `${seasonalHour}:${seasonalMinute.toString().padStart(2, '0')}:${seasonalSecond.toString().padStart(2, '0')} ${isDay ? 'ביום' : 'בלילה'}`;
   
   // OPTIMIZATION: Only update DOM if text changed
   if (sDigitalTimeHolder.textContent !== stimeString) {
@@ -80,10 +80,11 @@ export function setDate(inIsraelFn) {
   
   const dateHolder = document.getElementById("date");
   const dowHolder = document.getElementById("day-of-week");
+  const parshaHolder = document.getElementById("parsha");
   const holidayHolder = document.getElementById("holiday");
   const omerHolder = document.getElementById("omer");
-  
-  if (!dateHolder || !dowHolder || !holidayHolder || !omerHolder) return;
+
+  if (!dateHolder || !dowHolder || !parshaHolder || !holidayHolder || !omerHolder) return;
   
   const inIsrael = inIsraelFn(state.latitude, state.longitude);
   
@@ -172,19 +173,20 @@ export function setDate(inIsraelFn) {
     delete state.sunTimes["🕯️🕯️"];
   }
   
-  // Holidays
-  // Only update if holidays changed to avoid DOM thrashing
-  const holidays = getHolidays(inIsrael);
+  // Parsha (sedra) lives in its own holder right under the date so it's
+  // always the second row, never pushed third by holiday entries.
   const sedra = getSedra(inIsrael);
-  
-  // Quick check if we need to update
-  // We construct the HTML string and compare it
+  if (parshaHolder.textContent !== sedra) {
+    parshaHolder.textContent = sedra || '';
+  }
+
+  // Holidays follow below. Only update if changed to avoid DOM thrashing.
+  const holidays = getHolidays(inIsrael);
   let newHtml = '';
   for (const holidayText of holidays) {
     newHtml += `<div>${holidayText}</div>`;
   }
-  newHtml += `<div>${sedra}</div>`;
-  
+
   if (holidayHolder.innerHTML !== newHtml) {
     holidayHolder.innerHTML = newHtml;
   }
@@ -211,31 +213,31 @@ export function setAtmosphere() {
     let top, bot, glowOpacity, terrainBright;
 
     // --- LOGIC ---
-    if (elevation > 10) { 
+    if (elevation > 10) {
         // DAY
         top = C.dayBlueTop; bot = C.dayBlueBot;
         glowOpacity = 0; terrainBright = 1.0;
-    } 
-    else if (elevation > 0) { 
+    }
+    else if (elevation > 0) {
         // GOLDEN HOUR (10° down to 0°)
         const t = (10 - elevation) / 10;
         top = lerpColor(C.dayBlueTop, C.twilightPurple, t);
         bot = lerpColor(C.dayBlueBot, C.sunsetOrange, t);
         glowOpacity = t * 0.8;
-        terrainBright = 1.0 - (t * 0.3);
-    } 
-    else if (elevation > -12) { 
+        terrainBright = 1.0 - (t * 0.2); // 1.0 → 0.8
+    }
+    else if (elevation > -12) {
         // TWILIGHT (0° down to -12°)
         const t = (0 - elevation) / 12;
         top = lerpColor(C.twilightPurple, C.deepNight, t);
         bot = lerpColor(C.sunsetRed, C.nightBlue, t);
-        glowOpacity = (1 - t) * 0.6; // Fade out glow
-        terrainBright = 0.7 - (t * 0.5); // Get dark
-    } 
-    else { 
-        // NIGHT
+        glowOpacity = (1 - t) * 0.6;
+        terrainBright = 0.8 - (t * 0.2); // 0.8 → 0.6 — keep landscape readable through twilight
+    }
+    else {
+        // NIGHT — keep the landscape readable; CSS filter floor is 0.7
         top = C.deepNight; bot = C.nightBlue;
-        glowOpacity = 0; terrainBright = 0.25;
+        glowOpacity = 0; terrainBright = 0.75;
     }
 
     // Apply CSS Variables

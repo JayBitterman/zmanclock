@@ -330,7 +330,7 @@ export function placeSunTimes() {
     
     x += xShift;
     y += yShift;
-    
+
     sunTimeElement.style.left = `${50 + (x / clockRadius) * 50}%`;
     sunTimeElement.style.top = `${50 + (y / clockRadius) * 50}%`;
     sunTimeElement.style.transform = `translate(-50%, -50%)`;

@@ -27,15 +27,41 @@ import {
 } from './scene.js';
 import { fetchWeather, weatherState } from './weather.js';
 import { initLocation, locationState, getTimezoneForLocation } from './location.js';
+import { getKidushLevanaState } from './kidushLevana.js';
+import { renderZodiacs, updateZodiacPositions } from './zodiac.js';
 
 // ============================================================================
 // Israel Detection (GeoJSON)
 // ============================================================================
 
+const IL_GEOJSON_CACHE_KEY = 'zc:israel-geojson:v1';
+
 async function loadGeoJSON() {
+  // Subsequent boots: read from localStorage and refresh in the background.
+  const cached = localStorage.getItem(IL_GEOJSON_CACHE_KEY);
+  if (cached) {
+    try {
+      state.israelGeoJSON = JSON.parse(cached);
+      // Refresh silently — do not block the first paint on this.
+      fetch('il.json')
+        .then(r => r.json())
+        .then(data => {
+          state.israelGeoJSON = data;
+          try { localStorage.setItem(IL_GEOJSON_CACHE_KEY, JSON.stringify(data)); } catch {}
+        })
+        .catch(() => {});
+      return;
+    } catch {
+      // Cached value was corrupt; fall through to a fresh fetch.
+    }
+  }
+
+  // First boot: must await before continuing.
   try {
     const response = await fetch('il.json');
-    state.israelGeoJSON = await response.json();
+    const data = await response.json();
+    state.israelGeoJSON = data;
+    try { localStorage.setItem(IL_GEOJSON_CACHE_KEY, JSON.stringify(data)); } catch {}
   } catch (err) {
     console.warn("Could not load Israel GeoJSON:", err);
   }
@@ -89,6 +115,8 @@ function startWeatherUpdates() {
 // Geolocation
 // ============================================================================
 
+const LAST_LOCATION_KEY = 'zc:last-location:v1';
+
 function getLocation() {
   if (!navigator.geolocation) {
     alert("Geolocation is not supported by this browser.");
@@ -123,11 +151,38 @@ function getLocation() {
     });
   };
 
+  // Render immediately with the last known location while we wait for a fresh
+  // geolocation fix. Eliminates the multi-second blank wait on repeat visits.
+  const cached = localStorage.getItem(LAST_LOCATION_KEY);
+  if (cached) {
+    try {
+      const { lat, lon, timezone } = JSON.parse(cached);
+      if (typeof lat === 'number' && typeof lon === 'number') {
+        state.latitude = lat;
+        state.longitude = lon;
+        if (timezone) state.timezone = timezone;
+        startClockLoop();
+      }
+    } catch {}
+  }
+
   const onSuccess = (position) => {
     state.latitude = position.coords.latitude;
     state.longitude = position.coords.longitude;
-        
-    startClockLoop();
+
+    try {
+      localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify({
+        lat: state.latitude,
+        lon: state.longitude,
+        timezone: state.timezone
+      }));
+    } catch {}
+
+    // If we already started from cache, the loop is already running — just
+    // let the next tick pick up the fresh coords. Otherwise, kick it off now.
+    if (!state.clockIntervalId) {
+      startClockLoop();
+    }
   };
 
   const showError = (error) => {
@@ -141,6 +196,11 @@ function getLocation() {
       [error.UNKNOWN_ERROR]:
         "An unknown location error occurred."
     };
+    // Drop the boot overlay so the location picker stays reachable even when
+    // we never get a fix. updateClock() bails out early without coords, so
+    // nothing else hides it for us in this branch.
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'none';
     alert(messages[error.code] || "Error getting location.");
   };
 
@@ -259,15 +319,12 @@ function handleSpeedButtonClick(change) {
 }
 
 function updateSpeedIndicator() {
+  // Multiplier text intentionally hidden — the visible animation rate plus
+  // the forward/reverse button icons are signal enough.
   const indicator = document.getElementById('speed-indicator');
   if (!indicator) return;
-  
-  if (state.speedMultiplier !== 0) {
-    indicator.textContent = `${state.speedMultiplier > 0 ? '+' : ''}${state.speedMultiplier}x`;
-    indicator.classList.add('visible');
-  } else {
-    indicator.classList.remove('visible');
-  }
+  indicator.classList.remove('visible');
+  indicator.textContent = '';
 }
 
 function setupSpeedButtons() {
@@ -310,22 +367,26 @@ function setupSpeedButtons() {
 function setupTerrainToggle() {
   const terrainBtn = document.getElementById('btn-terrain');
   if (!terrainBtn) return;
-  
-  // Check for saved preference
+
+  // Compass mode now also drives zodiac visibility — one toggle, two layers.
   const savedMode = localStorage.getItem('compassMode');
   if (savedMode === 'true') {
     document.body.classList.add('compass-mode');
     terrainBtn.classList.add('active');
+    updateZodiacPositions(state.date, state.observer, { force: true });
   }
-  
+
   terrainBtn.addEventListener('click', () => {
     const isActive = document.body.classList.toggle('compass-mode');
     terrainBtn.classList.toggle('active', isActive);
-    
-    // Save preference
+    updateZodiacPositions(state.date, state.observer, { force: true });
     localStorage.setItem('compassMode', isActive);
   });
 }
+
+// Stale 'zodiacMode' flag from the previous standalone toggle — clear it once
+// so it doesn't linger in localStorage on existing clients.
+try { localStorage.removeItem('zodiacMode'); } catch {}
 
 // main.js
 
@@ -352,10 +413,67 @@ function setupToolbarToggle() {
 }
 
 // ============================================================================
+// Kiddush Levana display
+// ============================================================================
+
+// Cached previous values per-span so we only touch the DOM when something
+// visibly changes. Color applies only to the number span, per spec.
+let klLastHebrew = null;
+let klLastNumber = null;
+let klLastEmoji  = null;
+let klLastColor  = null;
+let klLastVisible = null;
+
+function updateKidushLevana() {
+  const root = document.getElementById('kidush-levana');
+  if (!root) return;
+
+  const hebrewEl = root.querySelector('.kl-hebrew');
+  const numberEl = root.querySelector('.kl-number');
+  const emojiEl  = root.querySelector('.kl-emoji');
+  if (!hebrewEl || !numberEl || !emojiEl) return;
+
+  const s = getKidushLevanaState(state.date);
+
+  if (s === null) {
+    if (klLastVisible !== false) {
+      root.style.display = 'none';
+      klLastVisible = false;
+    }
+    return;
+  }
+
+  if (klLastVisible !== true) {
+    root.style.display = '';
+    klLastVisible = true;
+  }
+
+  if (s.hebrew !== klLastHebrew) {
+    hebrewEl.textContent = s.hebrew;
+    klLastHebrew = s.hebrew;
+  }
+  if (s.number !== klLastNumber) {
+    numberEl.textContent = s.number;
+    klLastNumber = s.number;
+  }
+  if (s.emoji !== klLastEmoji) {
+    emojiEl.textContent = s.emoji;
+    klLastEmoji = s.emoji;
+  }
+  if (s.color !== klLastColor) {
+    numberEl.style.color = s.color;
+    klLastColor = s.color;
+  }
+}
+
+// ============================================================================
 // Main Update Loop
 // ============================================================================
 
 let lastSlowUpdate = 0;
+let firstFrameDone = false;
+let firstFrameTime = 0;
+const bootStart = performance.now();
 
 function updateClock() {
   if (state.latitude === null || state.longitude === null) return;
@@ -388,11 +506,12 @@ function updateClock() {
   // These are lightweight and critical for smooth animation
   setClockHand();
   setDigitalTimes();
-  
+  updateKidushLevana();
+
   // Handle Atmosphere & Scene
   const elevation = setAtmosphere();
   updateSceneVisuals(elevation);
-  
+
   positionMoon();
 
   // 4. SLOW UPDATES (Throttled to ~10fps)
@@ -401,19 +520,74 @@ function updateClock() {
   const now = Date.now();
   if (now - lastSlowUpdate > 100) {
     setDate(inIsrael);
-    
+
     // Update special day status (minor fasts, erev pesach)
     const dayStatus = getSpecialDayStatus(inIsrael(state.latitude, state.longitude));
     specialDayStatus.isMinorFast = dayStatus.isMinorFast;
     specialDayStatus.showBiurChametz = dayStatus.showBiurChametz;
-    
+
     // Add biur chametz time if needed
     addBiurChametzTime();
-    
+
     placeSunTimes();
+    updateZodiacPositions(state.date, state.observer);
     lastSlowUpdate = now;
   }
+
+  // Hide the boot overlay as soon as we've painted real content once. Doing
+  // this here (instead of at the end of init()) lets us drop it the moment
+  // the cached-location code path produces a usable frame.
+  if (!firstFrameDone) {
+    firstFrameDone = true;
+    firstFrameTime = performance.now();
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
 }
+
+// ============================================================================
+// Zodiac diagnostics
+//
+// Run window.zodiacDebug() in the browser console to see the altitude /
+// azimuth / hour-angle the math currently produces for each zodiac at
+// state.date. The "highest altitude" row should be the zodiac the sun is
+// currently in (sidereal/IAU), since that constellation crosses the meridian
+// alongside the sun. Use this to diagnose any apparent placement off-by-one.
+// ============================================================================
+
+import('./zodiac.js').then(({ ZODIAC_DATA }) => import('./astronomy.js').then(({ Astronomy }) => {
+  window.zodiacDebug = function zodiacDebug() {
+    if (!state.observer || !state.date) {
+      console.warn('zodiacDebug: observer / date not yet ready');
+      return;
+    }
+    const lstHours = Astronomy.SiderealTime(state.date) + state.observer.longitude / 15;
+    const rows = ZODIAC_DATA.map(sign => {
+      const horizon = Astronomy.Horizon(
+        state.date, state.observer,
+        sign.equatorial.ra, sign.equatorial.dec, 'normal'
+      );
+      let ha = (lstHours - sign.equatorial.ra) % 24;
+      if (ha > 12)  ha -= 24;
+      if (ha < -12) ha += 24;
+      return {
+        key: sign.key,
+        name: sign.name,
+        lambda_deg: sign.longitude,
+        ra_h: +sign.equatorial.ra.toFixed(3),
+        dec_deg: +sign.equatorial.dec.toFixed(2),
+        hourAngle_h: +ha.toFixed(3),
+        altitude_deg: +horizon.altitude.toFixed(2),
+        azimuth_deg: +horizon.azimuth.toFixed(2),
+      };
+    }).sort((a, b) => b.altitude_deg - a.altitude_deg);
+    console.log(
+      `zodiacDebug @ ${state.date.toISOString()} | observer (${state.observer.latitude.toFixed(2)}, ${state.observer.longitude.toFixed(2)}) | LST = ${(((lstHours % 24) + 24) % 24).toFixed(3)}h`
+    );
+    console.table(rows);
+    return rows;
+  };
+}));
 
 // ============================================================================
 // Calendar Integration
@@ -681,6 +855,7 @@ async function init() {
   initWeatherEffects();
   initBirds();
   positionClockNumbers();
+  renderZodiacs();
   setupDayButtons();
   setupSpeedButtons();
   setupToolbarToggle();
@@ -694,16 +869,77 @@ async function init() {
   // Initialize location module
   await initLocation();
   
-  // Get location and start clock
+  // Get location and start clock — overlay is now hidden inside updateClock()
+  // on the first painted frame, not here.
   getLocation();
 
-  document.getElementById('loading-overlay').style.display = 'none';
+  if (location.search.includes('perf')) {
+    // Wait until we've actually painted something before sampling.
+    const sampleWhenReady = () => {
+      if (!firstFrameDone) {
+        setTimeout(sampleWhenReady, 50);
+        return;
+      }
+      logBootPerf();
+    };
+    sampleWhenReady();
+  }
+}
+
+// ============================================================================
+// Boot perf instrumentation (gated behind ?perf)
+// ============================================================================
+
+function logBootPerf() {
+  const resources = performance.getEntriesByType('resource');
+  const turf = resources.find(r => r.name.includes('@turf/turf'));
+
+  console.group('⏱ Zman Clock boot perf');
+  console.log(`Total boot → first paint: ${Math.round(firstFrameTime - bootStart)} ms`);
+  console.log(`Resources fetched: ${resources.length}`);
+
+  if (turf) {
+    const transferred = turf.transferSize ?? turf.encodedBodySize ?? 0;
+    console.log(
+      `Turf module: ${turf.duration.toFixed(0)} ms `
+      + `(transferred ${transferred} B, decoded ${turf.decodedBodySize ?? '?'} B, `
+      + `${turf.transferSize === 0 ? 'served from disk cache' : 'from network'})`
+    );
+  } else {
+    console.log('Turf module: not found in resource list (cached at script eval?)');
+  }
+
+  console.log('Top 10 slowest resources:');
+  console.table(
+    resources
+      .map(r => ({
+        url: r.name.replace(/^https?:\/\//, '').slice(0, 70),
+        ms: Math.round(r.duration),
+        bytes: r.transferSize ?? 0
+      }))
+      .sort((a, b) => b.ms - a.ms)
+      .slice(0, 10)
+  );
+
+  if (state.israelGeoJSON) {
+    // 1k iterations to amortize cost of performance.now() and the loop itself.
+    const lat = state.latitude ?? 31.78;
+    const lon = state.longitude ?? 35.22;
+    const N = 1000;
+    const t0 = performance.now();
+    for (let i = 0; i < N; i++) inIsrael(lat + (i % 7) * 0.001, lon);
+    const avg = (performance.now() - t0) / N;
+    console.log(`inIsrael() avg over ${N} calls: ${avg.toFixed(4)} ms`);
+  }
+
+  console.groupEnd();
 }
 
 // Event listeners
 window.addEventListener('load', init);
 window.addEventListener('resize', () => {
   positionClockNumbers();
+  updateZodiacPositions(state.date, state.observer, { force: true });
   if (state.latitude !== null) {
     updateClock();
   }
