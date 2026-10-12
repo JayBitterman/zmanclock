@@ -4,10 +4,12 @@
 
 import * as hcal from 'https://cdn.jsdelivr.net/npm/@hebcal/core@5.5.0/+esm';
 import * as jDate from 'https://cdn.jsdelivr.net/npm/jewish-date@2.0.12/+esm';
-import { state, WEEKDAY, MODERN_HOLIDAYS, DUB_PARSHA, OMER_DAY } from './config.js';
+import { state, WEEKDAY, MODERN_HOLIDAYS, DUB_PARSHA, OMER_DAY, activeTimezone, getDateFormatter } from './config.js';
 
 // Re-export for use in other modules
 export { hcal, jDate };
+
+const DAY_PARTS = { year: 'numeric', month: 'numeric', day: 'numeric' };
 
 // hebrew.js
 
@@ -17,14 +19,7 @@ export { hcal, jDate };
  */
 export function updateHebrewDate(tzeis) {
   // 1. Get the current date components in the TARGET timezone
-  const tz = state.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric'
-  });
+  const formatter = getDateFormatter(activeTimezone(), DAY_PARTS);
   
   // Format to parts to parse reliably
   const parts = formatter.formatToParts(state.date);
@@ -49,6 +44,9 @@ export function updateHebrewDate(tzeis) {
   }
 }
 
+let lastHebrewDateAbs = null;
+let lastHebrewDateString = '';
+
 /**
  * Gets formatted Hebrew date string
  * Uses state.hdate which is already correctly calculated based on tzeis
@@ -63,13 +61,19 @@ export function getHebrewDateString() {
   // state.hdate is an HDate object from @hebcal/core
   // We can get the Hebrew representation directly from it
   const hd = state.hdate;
-  
+
+  // Called 10x per second but only changes once a day
+  const abs = hd.abs();
+  if (abs === lastHebrewDateAbs) return lastHebrewDateString;
+
   // Get the Gregorian date from the HDate and convert using jDate for formatting
   const gregDate = hd.greg();
   const jewishDate = jDate.toJewishDate(gregDate);
   const hebrewDate = jDate.toHebrewJewishDate(jewishDate);
-  
-  return `${hebrewDate.day} ${hebrewDate.monthName} ${hebrewDate.year}`;
+
+  lastHebrewDateAbs = abs;
+  lastHebrewDateString = `${hebrewDate.day} ${hebrewDate.monthName} ${hebrewDate.year}`;
+  return lastHebrewDateString;
 }
 
 /**
@@ -150,12 +154,22 @@ export function getHolidays(inIsrael) {
   return holidays;
 }
 
+const sedraCache = new Map();
+
 /**
  * Gets the weekly sedra (Torah portion)
  * @param {boolean} inIsrael - Whether the user is in Israel
  */
 export function getSedra(inIsrael) {
-  let sedra = new hcal.Sedra(state.hdate.getFullYear(), inIsrael)
+  // Building a Sedra computes the whole year's schedule, so keep one per year
+  const cacheKey = `${state.hdate.getFullYear()}|${inIsrael}`;
+  let yearSedra = sedraCache.get(cacheKey);
+  if (!yearSedra) {
+    yearSedra = new hcal.Sedra(state.hdate.getFullYear(), inIsrael);
+    sedraCache.set(cacheKey, yearSedra);
+  }
+
+  let sedra = yearSedra
     .getString(state.hdate, 'he')
     .replace(/[\u0591-\u05C7]/g, '');
   

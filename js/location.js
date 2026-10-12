@@ -4,7 +4,6 @@
 // ============================================================================
 
 import { state } from './config.js';
-import { processWeatherData } from './weather.js';
 
 // Location state
 export const locationState = {
@@ -601,27 +600,11 @@ function updateLocationIndicator(isCustom) {
  * Get timezone for a location using free API with retry and multiple fallbacks
  */
 export async function getTimezoneForLocation(lat, lon) {
-  // Use Open-Meteo to get BOTH timezone and weather in one shot
-  // We mirror the params from weather.js to ensure data consistency
+  // Open-Meteo resolves the timezone for any coordinates; no weather is requested
   const params = new URLSearchParams({
     latitude: lat.toFixed(4),
     longitude: lon.toFixed(4),
-    current: [
-      'temperature_2m',
-      'apparent_temperature', 
-      'weather_code',
-      'cloud_cover',
-      'precipitation',
-      'wind_speed_10m',
-      'snowfall',
-      'is_day',
-      'relative_humidity_2m',
-      'wind_direction_10m',
-      'wind_gusts_10m'
-    ].join(','),
-    timezone: 'auto', // This triggers the timezone lookup
-    temperature_unit: 'celsius',
-    wind_speed_unit: 'kmh'
+    timezone: 'auto'
   });
 
   const url = `https://api.open-meteo.com/v1/forecast?${params}`;
@@ -637,15 +620,10 @@ export async function getTimezoneForLocation(lat, lon) {
         }
 
         const data = await response.json();
-        
-        // PRE-LOAD THE WEATHER STATE!
-        // This avoids fetching weather again in main.js
-        processWeatherData(data);
-        
         return data.timezone;
     } catch (error) {
         tries -= 1;
-        console.error("Failed to fetch timezone/weather:", error);
+        console.error("Failed to fetch timezone:", error);
     }
   }
   

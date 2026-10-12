@@ -3,7 +3,7 @@
 // ============================================================================
 
 import * as Astronomy from 'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/+esm';
-import { state, RISING, SETTING } from './config.js';
+import { state, RISING, SETTING, activeTimezone, getDateFormatter } from './config.js';
 
 // Re-export Astronomy for use in other modules
 export { Astronomy };
@@ -17,43 +17,59 @@ function getTimezoneOffsetMs(timezone, date) {
   return utcDate.getTime() - tzDate.getTime();
 }
 
+const DAY_PARTS = { year: 'numeric', month: 'numeric', day: 'numeric' };
+const DATE_TIME_24H = {
+  hour12: false,
+  year: 'numeric', month: 'numeric', day: 'numeric',
+  hour: 'numeric', minute: 'numeric', second: 'numeric'
+};
+
+// The sun searches only change when the local day or the location does, so
+// they run once per day instead of every frame.
+let sunTimesCache = { key: null };
+
 /**
  * Calculates various sun times and related times for the given location and date.
  * @param {number} latitude - Latitude of the location
  * @param {number} longitude - Longitude of the location
  */
 export function calcSunTimes(latitude, longitude) {
-  const addTime = (baseTime, msToAdd) => new Date(baseTime.getTime() + msToAdd);
-
-  // Create observer
-  state.observer = new Astronomy.Observer(latitude, longitude, state.elevation);
-  
   // Calculate "today" in the TARGET timezone (or local if no custom timezone)
-  const tz = state.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const tz = activeTimezone();
 
   // Get the year, month, and day parts specifically for the target timezone
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric'
-  }).formatToParts(state.date);
+  const parts = getDateFormatter(tz, DAY_PARTS).formatToParts(state.date);
 
   const getPart = (type) => parts.find(p => p.type === type).value;
   const targetYear = parseInt(getPart('year'));
   const targetMonth = parseInt(getPart('month')) - 1;
   const targetDay = parseInt(getPart('day'));
 
+  const key = `${tz}|${targetYear}-${targetMonth}-${targetDay}|${latitude}|${longitude}|${state.elevation}`;
+  if (sunTimesCache.key !== key) {
+    sunTimesCache = computeSunTimes(latitude, longitude, tz, targetYear, targetMonth, targetDay, key);
+  }
+
+  const cache = sunTimesCache;
+  state.observer = cache.observer;
+  state.sunTimes = cache.sunTimes;
+
+  // Chatzos halayla is tonight's once past R' Tam, otherwise last night's.
+  state.sunTimes.chatzosLayla = cache.rTam <= state.date ? cache.tonightMidnight : cache.lastNightMidnight;
+}
+
+function computeSunTimes(latitude, longitude, tz, targetYear, targetMonth, targetDay, key) {
+  const addTime = (baseTime, msToAdd) => new Date(baseTime.getTime() + msToAdd);
+
+  // Create observer
+  const observer = new Astronomy.Observer(latitude, longitude, state.elevation);
+  state.observer = observer;
+
   // Create a date object representing midnight in that specific timezone
   const todayDate = new Date(Date.UTC(targetYear, targetMonth, targetDay));
 
   // Find the offset for this specific date in the target timezone
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    hour12: false,
-    year: 'numeric', month: 'numeric', day: 'numeric',
-    hour: 'numeric', minute: 'numeric', second: 'numeric'
-  });
+  const formatter = getDateFormatter(tz, DATE_TIME_24H);
 
   const dtString = formatter.format(todayDate);
   const [datePart, timePart] = dtString.split(', ');
@@ -104,17 +120,13 @@ export function calcSunTimes(latitude, longitude) {
   const mshyaker = Astronomy.SearchAltitude('Sun', state.observer, RISING, todayDate, 1, -10.2);
   const tzeis = Astronomy.SearchAltitude('Sun', state.observer, SETTING, todayDate, 1, -8.5);
   const rTam = addTime(sunset.date, 72 * 60 * 1000);
-  
-  let midnight;
-  if (rTam <= state.date) {
-    midnight = new Date((sunset.date.getTime() + nextSunrise.date.getTime()) / 2);
-  } else {
-    midnight = new Date((prevSunset.date.getTime() + sunrise.date.getTime()) / 2);
-  }
+
+  const tonightMidnight = new Date((sunset.date.getTime() + nextSunrise.date.getTime()) / 2);
+  const lastNightMidnight = new Date((prevSunset.date.getTime() + sunrise.date.getTime()) / 2);
 
   const midday = addTime(sunrise.date, dayLengthMs / 2);
 
-  state.sunTimes = {
+  const sunTimes = {
     'sunrise': sunrise.date,
     'sunset': sunset.date,
     'alos': dawn.date,
@@ -128,10 +140,12 @@ export function calcSunTimes(latitude, longitude) {
     'shemaGra': addTime(sunrise.date, 3 * dayHourMs),
     'tefilaGra': addTime(sunrise.date, 4 * dayHourMs),
     'shemaMga': addTime(dawn.date, 3 * mgaDayHourMs),
-    'chatzosLayla': midnight,
+    'chatzosLayla': null, // chosen per frame in calcSunTimes
     'prevSunset': prevSunset.date,
     'nextSunrise': nextSunrise.date
   };
+
+  return { key, observer, sunTimes, rTam, tonightMidnight, lastNightMidnight };
 }
 
 // Hebrew display names for zmanim (mapped from English keys)
@@ -245,15 +259,84 @@ export function calculateSeasonalTime() {
   return { isDay, seasonalHours, totalSeasonalMinutes, seasonalHourLength };
 }
 
+// Moon rise/set searches are the most expensive per-frame work. The previous
+// and next rise/set stay the same until the clock passes one of them.
+let moonEventsCache = null;
+
+function getMoonEvents(observer, date) {
+  const cached = moonEventsCache;
+  const ms = date.getTime();
+  if (cached && cached.observer === observer && ms > cached.validFrom && ms < cached.validUntil) {
+    return cached;
+  }
+
+  const nextMoonrise = Astronomy.SearchRiseSet('Moon', observer, RISING, date, 365);
+  const nextMoonset = Astronomy.SearchRiseSet('Moon', observer, SETTING, date, 365);
+  const prevMoonrise = Astronomy.SearchRiseSet('Moon', observer, RISING, date, -365);
+  const prevMoonset = Astronomy.SearchRiseSet('Moon', observer, SETTING, date, -365);
+  if (!nextMoonrise || !nextMoonset || !prevMoonrise || !prevMoonset) return null;
+
+  moonEventsCache = {
+    observer,
+    nextMoonrise: nextMoonrise.date,
+    nextMoonset: nextMoonset.date,
+    prevMoonrise: prevMoonrise.date,
+    prevMoonset: prevMoonset.date,
+    validFrom: Math.max(prevMoonrise.date.getTime(), prevMoonset.date.getTime()),
+    validUntil: Math.min(nextMoonrise.date.getTime(), nextMoonset.date.getTime())
+  };
+  return moonEventsCache;
+}
+
+// Orientation and phase drift by a fraction of a degree per minute, so
+// refresh them every 30 seconds of (simulated) time rather than every frame.
+const MOON_ORIENTATION_REFRESH_MS = 30 * 1000;
+let moonOrientationCache = null;
+
+function getMoonOrientation(observer, date) {
+  const cached = moonOrientationCache;
+  if (cached && cached.observer === observer &&
+      Math.abs(date.getTime() - cached.dateMs) < MOON_ORIENTATION_REFRESH_MS) {
+    return cached;
+  }
+  moonOrientationCache = { observer, dateMs: date.getTime(), ...calculateMoonOrientation(observer, date) };
+  return moonOrientationCache;
+}
+
 /**
  * Calculates moon position and orientation for observer's view.
- * Correctly accounts for Parallactic Angle (q) and Bright Limb Angle (chi).
- * * @returns {object} Moon data including position and orientation
+ * @returns {object|null} Moon data including position and orientation, or
+ *   null when the moon doesn't rise or set (high latitudes).
  */
 export function calculateMoonData() {
   const date = state.date;
   const observer = state.observer;
-  
+
+  const events = getMoonEvents(observer, date);
+  if (!events) return null;
+  const { nextMoonrise, nextMoonset, prevMoonrise, prevMoonset } = events;
+
+  // Calculate Progress Angle for clock position
+  let progressAngle;
+  if (nextMoonset < nextMoonrise) {
+    progressAngle = 180 * (date - prevMoonrise) / (nextMoonset - prevMoonrise);
+  } else {
+    progressAngle = 180 + 180 * (date - prevMoonset) / (nextMoonrise - prevMoonset);
+  }
+
+  const { rotationDeg, phaseAngle } = getMoonOrientation(observer, date);
+  return {
+    progressAngle: progressAngle % 360,
+    rotationDeg,
+    phaseAngle
+  };
+}
+
+/**
+ * Moon orientation for the observer's view.
+ * Correctly accounts for Parallactic Angle (q) and Bright Limb Angle (chi).
+ */
+function calculateMoonOrientation(observer, date) {
   // 1. Get Equatorial Coordinates (Topocentric to account for parallax)
   const moonEq = Astronomy.Equator('Moon', date, observer, true, true);
   const sunEq = Astronomy.Equator('Sun', date, observer, true, true);
@@ -295,21 +378,7 @@ export function calculateMoonData() {
   // If your moon icon starts "Lit on Right", we subtract 90 deg.
   const finalRotation = rotationDeg - 90;
 
-  // Calculate Progress Angle for clock position
-  const nextMoonrise = Astronomy.SearchRiseSet('Moon', observer, RISING, date, 365);
-  const nextMoonset = Astronomy.SearchRiseSet('Moon', observer, SETTING, date, 365);
-  const prevMoonrise = Astronomy.SearchRiseSet('Moon', observer, RISING, date, -365);
-  const prevMoonset = Astronomy.SearchRiseSet('Moon', observer, SETTING, date, -365);
-
-  let progressAngle;
-  if (nextMoonset.date < nextMoonrise.date) {
-    progressAngle = 180 * (date - prevMoonrise.date) / (nextMoonset.date - prevMoonrise.date);
-  } else {
-    progressAngle = 180 + 180 * (date - prevMoonset.date) / (nextMoonrise.date - prevMoonset.date);
-  }
-
   return {
-    progressAngle: progressAngle % 360,
     rotationDeg: finalRotation,
     phaseAngle: Astronomy.Illumination('Moon', date).phase_angle
   };

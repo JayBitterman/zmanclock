@@ -17,9 +17,7 @@
   --font-hebrew: 'Heebo', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Heebo', monospace;
 
-  /* Single source of truth for the visible clock face diameter.
-     Compass-svg width is derived from this so the ellipse always sits
-     concentric with the clock numerals. */
+  /* Single source of truth for the visible clock face diameter */
   --clock-size: 50vmin;
 
   /* Clock & UI Colors */
@@ -27,26 +25,10 @@
   --clock-bg: rgba(0, 0, 0, 0.2);
   --text-color: white;
   
-  /* Luxury Clock Hand Colors - Polished Blued Steel (slightly brightened) */
-  --hand-color: #2c2c4a;
-  --hand-highlight: #7878a0;
-  --hand-accent: #44446a;
-  --hand-shine: rgba(255, 255, 255, 0.6);
 
   /* Dynamic Atmosphere Variables (Updated by JS) */
   --sky-top: #000000;
   --sky-bottom: #000000;
-  --terrain-brightness: 1;
-  --terrain-contrast: 1;
-  --horizon-glow-opacity: 0;
-  --horizon-glow-color: #ffaa00;
-  
-  /* Weather Variables (Updated by JS) */
-  --wind-intensity: 1;
-  --fog-opacity: 0;
-  --rain-opacity: 0;
-  --snow-opacity: 0;
-  --cloud-opacity: 0;
   
   /* Text Shadow for Readability */
   --text-shadow: 
@@ -148,10 +130,11 @@ body {
 }
 
 /* ============================================================================
-   LUXURY ORNATE CLOCK HAND - Breguet/Patek Philippe Inspired
+   Clock Hand - brass grandfather-clock hand (SVG in index.html)
    ============================================================================ */
 
-/* Main hand container - establishes the pivot point */
+/* The hand element spans from the tip (left edge) to the pivot (right edge,
+   the clock center); JS rotates it around the pivot. */
 .hand {
   position: absolute;
   top: 50%;
@@ -163,90 +146,17 @@ body {
   transition: transform 150ms linear;
 }
 
-/* Main hand body - the elegant tapered shaft */
-.hand::before {
-  content: '';
+/* viewBox runs from the tip (x = -460) past the pivot (x = 0) to the end of
+   the counterweight (x = 96), so the SVG is 556/460 of the hand's width. */
+.hand-svg {
   position: absolute;
-  right: 0;
-  top: 50%;
+  left: 0;
+  top: 0;
+  width: calc(100% * 556 / 460);
+  height: auto;
   transform: translateY(-50%);
-  
-  /* Dimensions */
-  width: 100%;
-  height: 1.8vmin;
-  
-  /* Ornate Breguet-style shape with hollow moon cutout */
-  clip-path: polygon(
-    /* Tip - sharp pointed needle */
-    0% 50%,
-    8% 35%,
-    8% 42%,
-    
-    /* Transition to main body */
-    15% 42%,
-    18% 30%,
-    
-    /* Main shaft upper edge */
-    25% 25%,
-    
-    /* Continue to pivot end */
-    85% 20%,
-    92% 15%,
-    100% 15%,
-    
-    /* Bottom edge - mirror */
-    100% 85%,
-    92% 85%,
-    85% 80%,
-    
-    /* Back to tip */
-    25% 75%,
-    18% 70%,
-    15% 58%,
-    8% 58%,
-    8% 65%
-  );
-  
-  /* Polished blued steel gradient */
-  background: linear-gradient(
-    to bottom,
-    var(--hand-shine) 0%,
-    var(--hand-highlight) 15%,
-    var(--hand-color) 40%,
-    var(--hand-accent) 60%,
-    var(--hand-color) 85%,
-    rgba(0, 0, 0, 0.8) 100%
-  );
-}
-
-/* Decorative center arbor (pivot cap) - layered luxury design */
-.hand::after {
-  content: '';
-  position: absolute;
-  right: -2vmin;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3vmin;
-  height: 3vmin;
-  border-radius: 50%;
-  
-  /* Multi-layered concentric design — slightly brighter to match the hand */
-  background:
-    /* Polished dome with highlight */
-    radial-gradient(circle at 35% 35%,
-      rgba(255, 255, 255, 0.65) 0%,
-      rgba(255, 255, 255, 0.2) 20%,
-      transparent 50%
-    ),
-    /* Main cap body */
-    radial-gradient(circle at 40% 40%,
-      #8888a8 0%,
-      #5a5a78 40%,
-      #2c2c4a 70%,
-      #050511 100%
-    );
-    
-  z-index: 11;
+  overflow: visible;
+  filter: drop-shadow(0 0.3vmin 0.35vmin rgba(0, 0, 0, 0.55));
 }
 
 .clock-number {
@@ -284,22 +194,28 @@ body {
     0 0 2vmin rgba(255, 200, 50, 0.6),
     0 0 4vmin rgba(255, 150, 0, 0.4),
     0 0 6vmin rgba(255, 100, 0, 0.2);
+}
+
+/* Pulse by fading a wider glow in and out. Animating opacity runs on the
+   compositor; animating box-shadow repainted the sun every frame and dragged
+   every other animation on the page onto the main thread with it. */
+#sun::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow:
+    0 0 2.5vmin rgba(255, 200, 50, 0.25),
+    0 0 5vmin rgba(255, 150, 0, 0.2),
+    0 0 7vmin rgba(255, 100, 0, 0.15);
+  opacity: 0;
+  pointer-events: none;
   animation: sunPulse 4s ease-in-out infinite;
 }
 
 @keyframes sunPulse {
-  0%, 100% { 
-    box-shadow:
-      0 0 2vmin rgba(255, 200, 50, 0.6),
-      0 0 4vmin rgba(255, 150, 0, 0.4),
-      0 0 6vmin rgba(255, 100, 0, 0.2);
-  }
-  50% { 
-    box-shadow:
-      0 0 2.5vmin rgba(255, 200, 50, 0.7),
-      0 0 5vmin rgba(255, 150, 0, 0.5),
-      0 0 7vmin rgba(255, 100, 0, 0.3);
-  }
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 
 #moon {
@@ -329,7 +245,7 @@ body {
   font-family: var(--font-hebrew);
   letter-spacing: 0.01em;
   line-height: 1.1;
-  transition: color 0.3s ease;
+  transition: color 0.3s ease, transform 0.8s ease;
 
   /* Crisp stroke (rendered behind fill) — sharper than multi-shadow stacks
      which compound into a fuzzy halo against bright daytime sky. */
@@ -338,610 +254,197 @@ body {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
 }
 
-/* In compass mode the terrain panel sits at z-index 20; lift sun-times
-   above it so the lower-half zmanim don't disappear behind the brown bg. */
-body.compass-mode .sun-time {
-  z-index: 25;
+/* Zmanim that have passed fade out */
+.sun-time.past {
+  opacity: 0.5;
 }
+
 
 /* ============================================================================
-   Zodiac Constellation Layer
+   Sky - sunrise/sunset glow and real stars (gradient is set on #screen)
    ============================================================================ */
 
-#zodiac-layer {
-  position: absolute;
-  top: 50dvh;
-  left: 50%;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-  display: none;
-}
-
-/* Compass mode now also reveals the zodiac overlay (single toggle drives both) */
-body.compass-mode #zodiac-layer {
-  display: block;
-}
-
-.zodiac {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  width: clamp(46px, 8.5vmin, 88px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25vmin;
-  color: rgba(245, 249, 255, 0.92);
-  text-align: center;
-  will-change: left, top, opacity;
-  transition: opacity 0.4s ease, filter 0.4s ease;
-}
-
-.zodiac.above-horizon {
-  z-index: 28;
-  opacity: 0.94;
-  filter:
-    drop-shadow(0 0 0.8vmin rgba(180, 215, 255, 0.36))
-    drop-shadow(0 0.2vmin 0.5vmin rgba(0, 0, 0, 0.75));
-}
-
-.zodiac.below-horizon {
-  z-index: 3;
-  opacity: var(--zodiac-ghost-opacity, 0.72);
-  filter:
-    saturate(0.95)
-    brightness(1.2)
-    drop-shadow(0 0 0.7vmin rgba(190, 225, 255, 0.38));
-}
-
-.zodiac-illustration {
-  width: clamp(32px, 5.2vmin, 64px);
-  height: clamp(32px, 5.2vmin, 64px);
-}
-
-.zodiac-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  overflow: visible;
-}
-
-.zodiac-line {
-  stroke: rgba(226, 236, 255, 0.55);
-  stroke-width: 1.25;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: none;
-  vector-effect: non-scaling-stroke;
-}
-
-.zodiac-star {
-  fill: rgba(252, 254, 255, 0.98);
-}
-
-.zodiac-star-glow {
-  fill: rgba(150, 205, 255, 0.22);
-}
-
-.zodiac-name {
-  font-family: var(--font-hebrew);
-  font-size: clamp(10px, 1.45vmin, 16px);
-  font-weight: 600;
-  line-height: 1;
-  color: rgba(246, 249, 255, 0.9);
-  direction: rtl;
-  white-space: nowrap;
-  text-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.95),
-    0 0 0.8vmin rgba(25, 40, 65, 0.8);
-}
-
-/* Stale .zodiac-btn.active rules removed — the dedicated button is gone and
-   the compass button's existing .terrain-btn.active styling already handles
-   the on-state for both layers. */
-
-body.zodiac-mode:not(.compass-mode) .terrain-container {
-  opacity: 0.78;
-}
-
-body.zodiac-mode.compass-mode .terrain-container {
-  opacity: 0.8;
-}
-
-/* ============================================================================
-   Weather Effects Layer
-   ============================================================================ */
-
-#weather-effects {
+#sky {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  overflow: hidden;
-}
-
-/* Cloud Container */
-#cloud-container {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  /* Performance: isolate painting of clouds */
-  contain: layout style;
-}
-
-/* Base cloud styling */
-.cloud {
-  position: absolute;
-  border-radius: 50%;
-  will-change: transform;
-  animation: cloudDrift var(--cloud-speed, 60s) linear infinite;
-  /* Performance: isolate each cloud's rendering */
-  contain: layout style paint;
-  /* Base appearance - white fluffy cloud */
-  background: radial-gradient(ellipse at 30% 30%, 
-    rgba(255, 255, 255, 0.95) 0%, 
-    rgba(250, 250, 255, 0.85) 25%,
-    rgba(240, 242, 250, 0.6) 50%, 
-    rgba(230, 235, 245, 0.3) 70%,
-    transparent 85%);
-  /* Brightness controlled by JS via CSS variable */
-  filter: blur(8px) brightness(var(--cloud-brightness, 1));
-  opacity: var(--cloud-base-opacity, 0.7);
-  transition: filter 2s ease, opacity 2s ease, background 2s ease;
-}
-
-/* Storm clouds - darker gray appearance */
-:root[data-weather="storm"] .cloud {
-  background: radial-gradient(ellipse at 30% 30%, 
-    rgba(180, 185, 195, 0.95) 0%, 
-    rgba(140, 150, 165, 0.85) 25%,
-    rgba(100, 115, 135, 0.6) 50%, 
-    rgba(70, 85, 110, 0.3) 70%,
-    transparent 85%);
-}
-
-/* Heavy overcast - grayish clouds */
-:root[data-weather="heavy"] .cloud {
-  background: radial-gradient(ellipse at 30% 30%, 
-    rgba(210, 215, 225, 0.95) 0%, 
-    rgba(185, 195, 210, 0.85) 25%,
-    rgba(160, 175, 195, 0.6) 50%, 
-    rgba(140, 155, 175, 0.3) 70%,
-    transparent 85%);
-}
-
-/* Layer depth variations - use same filter structure */
-.cloud.layer-back {
-  filter: blur(14px) brightness(var(--cloud-brightness, 1));
-  opacity: calc(var(--cloud-base-opacity, 0.7) * 0.6);
   z-index: 1;
-}
-
-.cloud.layer-mid {
-  filter: blur(10px) brightness(var(--cloud-brightness, 1));
-  opacity: calc(var(--cloud-base-opacity, 0.7) * 0.8);
-  z-index: 2;
-}
-
-.cloud.layer-front {
-  filter: blur(6px) brightness(var(--cloud-brightness, 1));
-  opacity: var(--cloud-base-opacity, 0.7);
-  z-index: 3;
-}
-
-/* Night clouds - blue-gray tint (only applied in deep night) */
-:root[data-time="night"] .cloud {
-  background: radial-gradient(ellipse at 30% 30%, 
-    rgba(140, 150, 180, 0.9) 0%, 
-    rgba(100, 115, 150, 0.75) 25%,
-    rgba(70, 85, 120, 0.5) 50%, 
-    rgba(50, 65, 100, 0.25) 70%,
-    transparent 85%);
-}
-
-/* Cloud drift animation */
-@keyframes cloudDrift {
-  from {
-    transform: translate(0, 0);
-  }
-  to {
-    transform: translate(var(--cloud-move-x, 100%), var(--cloud-move-y, 0));
-  }
-}
-
-/* High cloud cover - ensure overlap and layering */
-.cloud.dense {
-  filter: blur(15px);
-}
-
-.rain-container {
-  position: fixed;
-  inset: 0;
-  opacity: var(--rain-opacity, 0);
-  transition: opacity 1s ease;
-  z-index: 15;
   pointer-events: none;
-  /* Performance: isolate rendering */
-  contain: strict;
-}
-
-.raindrop {
-  position: absolute;
-  width: 2px;
-  height: 20px;
-  background: linear-gradient(to bottom, 
-    transparent 0%, 
-    rgba(200, 220, 255, 0.4) 30%,
-    rgba(180, 205, 245, 0.8) 70%,
-    rgba(160, 190, 235, 0.9) 100%);
-  animation: rainfall linear infinite;
-  filter: blur(0.5px);
-  box-shadow: 0 0 2px rgba(180, 210, 255, 0.3);
-  /* Performance: prevent layout recalc */
-  contain: layout style;
-}
-
-@keyframes rainfall {
-  0% { transform: translateY(-100vh); }
-  100% { transform: translateY(100vh); }
-}
-
-.snow-container {
-  position: fixed;
-  inset: 0;
-  opacity: var(--snow-opacity, 0);
-  transition: opacity 1s ease;
-  z-index: 15;
-  pointer-events: none;
-  /* Performance: isolate rendering */
-  contain: strict;
-}
-
-.snowflake {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: white;
-  border-radius: 50%;
-  filter: blur(1px);
-  animation: snowfall linear infinite;
-  /* Performance: prevent layout recalc */
-  contain: layout style;
-}
-
-@keyframes snowfall {
-  0% { 
-    transform: translateY(-10vh) translateX(0) rotate(0deg); 
-    opacity: 1;
-  }
-  100% { 
-    transform: translateY(100vh) translateX(20px) rotate(360deg); 
-    opacity: 0.7;
-  }
-}
-
-.fog-layer {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top,
-    rgba(200, 200, 200, var(--fog-opacity, 0)) 0%,
-    rgba(180, 180, 180, calc(var(--fog-opacity, 0) * 0.7)) 30%,
-    rgba(150, 150, 150, calc(var(--fog-opacity, 0) * 0.3)) 60%,
-    transparent 100%);
-  transition: all 2s ease;
-}
-
-.night-mode .fog-layer {
-  background: linear-gradient(to top,
-    rgba(50, 60, 80, var(--fog-opacity, 0)) 0%,
-    rgba(40, 50, 70, calc(var(--fog-opacity, 0) * 0.7)) 30%,
-    rgba(30, 40, 60, calc(var(--fog-opacity, 0) * 0.3)) 60%,
-    transparent 100%);
-}
-
-.lightning {
-  position: absolute;
-  inset: 0;
-  background: transparent;
-  pointer-events: none;
-  z-index: 100;
-}
-
-.lightning.flash {
-  animation: lightningFlash 0.5s ease-out;
-}
-
-/* Global lightning flash - brightens EVERYTHING */
-:root.lightning-flash {
-  --lightning-boost: 1.5;
-}
-
-:root.lightning-flash .terrain-container,
-:root.lightning-flash #vegetation-layer,
-:root.lightning-flash .person-wrapper,
-:root.lightning-flash #cloud-container,
-:root.lightning-flash #sky-effects {
-  filter: brightness(var(--lightning-boost)) !important;
-  transition: filter 0.3s ease-out;
-}
-
-:root.lightning-flash #screen {
-  background: linear-gradient(
-    to bottom, 
-    color-mix(in srgb, var(--sky-top) 60%, white) 0%, 
-    color-mix(in srgb, var(--sky-bottom) 60%, white) 100%
-  ) !important;
-}
-
-:root:not(.lightning-flash) .terrain-container,
-:root:not(.lightning-flash) #vegetation-layer,
-:root:not(.lightning-flash) .person-wrapper {
-  transition: filter 0.3s ease-in;
-}
-
-
-
-/* ============================================================================
-   Sky Effects (Stars)
-   ============================================================================ */
-
-#sky-effects {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
   overflow: hidden;
 }
 
-.star {
+/* Glow on the horizon under the sun; positioned and colored by sky.js */
+#sun-glow {
   position: absolute;
-  background: white;
-  border-radius: 50%;
-  /* STARS ARE COMPLETELY INVISIBLE BY DEFAULT */
-  opacity: 0;
-  visibility: hidden;
-}
-
-/* Stars ONLY visible when night-mode class is present on #sky-effects */
-#sky-effects.night-mode .star {
-  visibility: visible;
-  animation: twinkle var(--twinkle-duration) ease-in-out infinite;
-  animation-delay: var(--delay);
-  opacity: var(--star-opacity, 0.8);
-}
-
-/* Star visibility - dimmed by clouds but not hidden */
-#sky-effects.cloudy .star {
-  opacity: calc(var(--star-opacity, 0.7) * var(--star-dim-factor, 1));
-}
-
-/* COMPLETELY HIDE stars when overcast (95%+ cloud cover) */
-#sky-effects.night-mode.overcast .star {
-  opacity: 0 !important;
-  visibility: hidden !important;
-}
-
-@keyframes twinkle {
-  0%, 100% { transform: scale(1); opacity: 0.4; }
-  50% { transform: scale(1.3); opacity: 1; }
-}
-
-/* ============================================================================
-   BIRDS - Animated Sprite System
-   ============================================================================ */
-
-.bird {
-  background-image: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/174479/bird-cells-new.svg');
-  filter: invert(10%) sepia(5%) saturate(200%) brightness(30%);
-  background-size: auto 100%;
-  width: 88px;
-  height: 125px;
-  will-change: background-position;
-  animation-name: fly-cycle;
-  animation-timing-function: steps(10);
-  animation-iteration-count: infinite;
-}
-
-.bird-one {
-  animation-duration: 1s;
-  animation-delay: -0.5s;
-}
-
-.bird-two { 
-  animation-duration: 0.9s; 
-  animation-delay: -0.75s; 
-}
-
-.bird-three {
-  animation-duration: 1.25s;
-  animation-delay: -0.25s;
-}
-
-.bird-four {
-  animation-duration: 1.1s;
-  animation-delay: -0.5s;
-}
-
-.bird-container {
-  position: absolute;
-  top: 10%;
-  left: -10%;
-  transform: scale(0) translateX(-10vw);
-  will-change: transform;
-  animation-timing-function: linear;
-  animation-iteration-count: 1;
-  animation-fill-mode: forwards;
-  z-index: 2;
-  display: none; /* Hidden by default, shown via JS when conditions allow */
-}
-
-.bird-container.active {
-  display: block;
-  animation-name: fly-right-one;
-}
-
-/* Right-to-left flight */
-.bird-container.active.fly-left {
-  left: auto;
-  right: -10%;
-  animation-name: fly-left-one;
-}
-
-.bird-container.active.fly-left .bird {
-  transform: scaleX(-1); /* Flip the bird sprite */
-}
-
-.bird-container-one {
-  animation-duration: 15s;
-}
-
-.bird-container-two {
-  animation-duration: 16s;
-  top: 15%;
-}
-
-.bird-container-three {
-  animation-duration: 14.6s;
-  top: 8%;
-}
-
-.bird-container-four {
-  animation-duration: 16s;
-  top: 20%;
-}
-
-@keyframes fly-cycle {
-  100% {
-    background-position: -900px 0;
-  }
-}
-
-@keyframes fly-right-one {
-  0% {
-    transform: scale(0.3) translateX(-10vw);
-  }
-  10% {
-    transform: translateY(2vh) translateX(10vw) scale(0.4);
-  }
-  20% {
-    transform: translateY(0vh) translateX(30vw) scale(0.5);
-  }
-  30% {
-    transform: translateY(4vh) translateX(50vw) scale(0.6);
-  }
-  40% {
-    transform: translateY(2vh) translateX(70vw) scale(0.6);
-  }
-  50% {
-    transform: translateY(0vh) translateX(90vw) scale(0.6);
-  }
-  60% {
-    transform: translateY(0vh) translateX(110vw) scale(0.6);
-  }
-  100% {
-    transform: translateY(0vh) translateX(110vw) scale(0.6);
-  }
-}
-
-@keyframes fly-right-two {
-  0% {
-    transform: translateY(-2vh) translateX(-10vw) scale(0.5);
-  }
-  10% {
-    transform: translateY(0vh) translateX(10vw) scale(0.4);
-  }
-  20% {
-    transform: translateY(-4vh) translateX(30vw) scale(0.6);
-  }
-  30% {
-    transform: translateY(1vh) translateX(50vw) scale(0.45);
-  }
-  40% {
-    transform: translateY(-2.5vh) translateX(70vw) scale(0.5);
-  }
-  50% {
-    transform: translateY(0vh) translateX(90vw) scale(0.45);
-  }
-  51% {
-    transform: translateY(0vh) translateX(110vw) scale(0.45);
-  }
-  100% {
-    transform: translateY(0vh) translateX(110vw) scale(0.45);
-  }
-}
-
-/* Right to Left animations */
-@keyframes fly-left-one {
-  0% {
-    transform: scale(0.3) translateX(10vw);
-  }
-  10% {
-    transform: translateY(2vh) translateX(-10vw) scale(0.4);
-  }
-  20% {
-    transform: translateY(0vh) translateX(-30vw) scale(0.5);
-  }
-  30% {
-    transform: translateY(4vh) translateX(-50vw) scale(0.6);
-  }
-  40% {
-    transform: translateY(2vh) translateX(-70vw) scale(0.6);
-  }
-  50% {
-    transform: translateY(0vh) translateX(-90vw) scale(0.6);
-  }
-  60% {
-    transform: translateY(0vh) translateX(-110vw) scale(0.6);
-  }
-  100% {
-    transform: translateY(0vh) translateX(-110vw) scale(0.6);
-  }
-}
-
-@keyframes fly-left-two {
-  0% {
-    transform: translateY(-2vh) translateX(10vw) scale(0.5);
-  }
-  10% {
-    transform: translateY(0vh) translateX(-10vw) scale(0.4);
-  }
-  20% {
-    transform: translateY(-4vh) translateX(-30vw) scale(0.6);
-  }
-  30% {
-    transform: translateY(1vh) translateX(-50vw) scale(0.45);
-  }
-  40% {
-    transform: translateY(-2.5vh) translateX(-70vw) scale(0.5);
-  }
-  50% {
-    transform: translateY(0vh) translateX(-90vw) scale(0.45);
-  }
-  51% {
-    transform: translateY(0vh) translateX(-110vw) scale(0.45);
-  }
-  100% {
-    transform: translateY(0vh) translateX(-110vw) scale(0.45);
-  }
-}
-
-.horizon-glow {
-  position: absolute;
-  bottom: 0;
   left: 0;
-  width: 100%;
-  height: 50dvh;
-  background: radial-gradient(ellipse at center bottom, var(--horizon-glow-color, #ffaa00) 0%, transparent 70%);
-  opacity: var(--horizon-glow-opacity, 0);
-  pointer-events: none;
-  z-index: 2;
+  top: 0;
+  width: 115vmin;
+  height: 52vmin;
+  opacity: 0;
   mix-blend-mode: screen;
+  background:
+    radial-gradient(closest-side, var(--glow-color, #f07534), transparent 45%),
+    radial-gradient(closest-side, var(--glow-color, #f07534), transparent);
+  will-change: transform, opacity;
+}
+
+#star-layer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 2s linear;
+}
+
+#star-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+#star-twinkles {
+  position: absolute;
+  inset: 0;
+}
+
+/* Sparkle over the brightest stars (positioned by sky.js) */
+.sky-twinkle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1vmin;
+  height: 1vmin;
+  margin: -0.5vmin 0 0 -0.5vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(255, 255, 255, 0.65) 28%, rgba(255, 255, 255, 0) 70%);
+  animation: skyTwinkle var(--tw-dur, 2.4s) ease-in-out var(--tw-delay, 0s) infinite alternate;
+}
+
+@keyframes skyTwinkle {
+  from { opacity: 0.1; }
+  to { opacity: 0.85; }
+}
+
+/* ============================================================================
+   Mazalos - ring around the clock; across the sky in compass mode
+   ============================================================================ */
+
+/* No z-index or opacity here, so each mazal stacks on its own (JS fades them
+   for day and night individually). */
+#mazal-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Above the clock face and the person, so this month's mazal stays visible
+   when it passes under the clock at night */
+.mazal {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 8;
+  width: 11vmin;
+  height: 11vmin;
   transition: opacity 1s linear;
 }
 
+#mazal-layer.mazal-moving .mazal {
+  transition: transform 1.1s cubic-bezier(0.4, 0, 0.2, 1), opacity 1.1s ease;
+}
+
+#mazal-layer.mazal-moving .mazal-figure {
+  transition: transform 1.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mazal-figure {
+  position: absolute;
+  inset: 0;
+}
+
+.mazal-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.mazal-lines path {
+  fill: none;
+  stroke: rgba(196, 214, 255, 0.4);
+  stroke-width: 1;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.mazal-star,
+.mazal-field {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.mazal-star {
+  animation: mazalTwinkle var(--tw-dur, 3s) ease-in-out var(--tw-delay, 0s) infinite alternate;
+}
+
+@keyframes mazalTwinkle {
+  from { opacity: 1; }
+  to { opacity: 0.58; }
+}
+
+.mazal-field {
+  opacity: 0.7;
+}
+
+.mazal-name {
+  position: absolute;
+  left: 50%;
+  top: 96%;
+  transform: translateX(-50%);
+  font-family: var(--font-hebrew);
+  font-size: 1.7vmin;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  direction: rtl;
+  white-space: nowrap;
+  color: rgba(226, 234, 255, 0.8);
+  text-shadow: 0 0 0.6vmin rgba(0, 0, 0, 0.85), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+/* This month's mazal: warm halo, brighter lines, gold name */
+.mazal.is-current .mazal-figure::before {
+  content: '';
+  position: absolute;
+  inset: -14%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 214, 140, 0.2), rgba(255, 214, 140, 0));
+}
+
+.mazal.is-current .mazal-lines path {
+  stroke: rgba(255, 226, 170, 0.62);
+}
+
+.mazal.is-current .mazal-name {
+  color: #f6d98c;
+  font-weight: 700;
+}
+
+.mazal.label-above .mazal-name {
+  top: auto;
+  bottom: 96%;
+}
+
+.mazal-name {
+  transition: opacity 0.6s ease;
+}
+
+.mazal.name-hidden .mazal-name {
+  opacity: 0;
+}
+
 /* ============================================================================
-   Terrain with Grass
+   Landscape - Judean hills (drawn by landscape.js, lit with CSS variables)
    ============================================================================ */
 
 .terrain-container {
@@ -954,26 +457,53 @@ body.zodiac-mode.compass-mode .terrain-container {
   height: 50dvh;
   z-index: 4;
   pointer-events: none;
-  filter: brightness(max(0.7, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1)))) contrast(var(--terrain-contrast, 1));
-  transition: filter 0.5s ease;
+  overflow: visible;
+  transition: background 0.5s ease;
 }
 
-#land-svg {
+/* Regular and compass layouts crossfade; the hidden one is also made
+   invisible after the fade so it isn't painted. */
+#land-svg,
+#land-svg-compass {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
+  overflow: visible;
+  transition: opacity 0.6s ease, visibility 0s linear 0s;
 }
 
-.land-layer {
-  transition: fill 1s ease;
+#land-svg-compass,
+body.compass-mode #land-svg {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.6s ease, visibility 0s linear 0.6s;
 }
 
-#land-back { fill: #5b5349; }
-#land-mid { fill: #494238; }
-#land-front { fill: #433d33; }
+body.compass-mode #land-svg-compass {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Village at night: warm windows, halos, street lamps and a soft glow */
+.village-windows {
+  fill: #ffd98a;
+  opacity: var(--village-lights, 0);
+}
+
+.village-lights {
+  fill: url(#window-glow);
+  opacity: var(--village-lights, 0);
+}
+
+.village-glow {
+  fill: url(#village-glow);
+  opacity: var(--village-lights, 0);
+}
 
 /* ============================================================================
-   Compass Mode - Extended Terrain View
+   Compass Mode - standing in the landscape
    ============================================================================ */
 
 /* Compass/terrain group sits inline within the toolbar pill (no longer floats) */
@@ -983,107 +513,127 @@ body.zodiac-mode.compass-mode .terrain-container {
   bottom: auto;
 }
 
-/* Compass overlay (hidden by default) — center sits at top of terrain (= 50dvh
-   = clock center). Width derives from --clock-size so the ellipse stays
-   concentric with the clock numerals. */
-.compass-overlay {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.5s ease, visibility 0.5s ease;
-  z-index: 30;
-}
-
-.compass-svg {
-  /* Ellipse rx is 90% of viewBox width (180/200 half-width). Multiplying the
-     clock diameter by 1.11 makes the ellipse diameter equal the clock face. */
-  width: calc(var(--clock-size) * 1.11);
-  height: auto;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
-}
-
-.compass-svg text {
-  font-family: var(--font-hebrew);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-}
-
-/* Compass mode active state */
-body.compass-mode .compass-overlay {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* Terrain extends up to clock center in compass mode. Compass is functional
-   so we drop the time-of-day brightness filter and use a lighter gradient
-   that's always readable. */
+/* The land rises to the horizon at the clock center. It covers the sky
+   layers (and the mazalos below the horizon). */
 body.compass-mode .terrain-container {
-  height: 50dvh;
-  opacity: 0.92;
-  transition: height 0.5s ease, opacity 0.5s ease, filter 0.5s ease;
-  background: linear-gradient(to bottom, #5a5446 0%, #6b6354 100%);
-  filter: none;
   z-index: 20;
 }
 
-/* Hide the SVG paths in compass mode - we use flat background instead */
-body.compass-mode #land-svg {
+/* The clock is one layer in front of the land. Inside it, the lower half of
+   the dial is a cut-away into the earth, drawn over the sun and hand (so they
+   show through dimly when below the horizon) and under the numerals. */
+body.compass-mode .clock-container { z-index: 21; }
+body.compass-mode .clock-face { z-index: 1; }
+body.compass-mode #sun,
+body.compass-mode #moon { z-index: 2; }
+body.compass-mode .hand { z-index: 3; }
+body.compass-mode #clock-earth { z-index: 4; }
+body.compass-mode .clock-number { z-index: 5; }
+body.compass-mode .sun-time { z-index: 6; }
+
+/* Clear glass over the sky half, so stars and mazalos show through it */
+body.compass-mode .clock-face {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+/* Facing south the sun rises on the left, so the dial mirrors (its hand turns
+   clockwise, like a sundial's shadow). Numerals and zman labels flip back so
+   they stay readable; JS centers them with the `translate` property so this
+   transform mirrors each one in place. */
+.clock-container {
+  transition: transform 0.8s ease;
+}
+
+body.facing-south .clock-container {
+  transform: scaleX(-1);
+}
+
+.clock-number {
+  transition: transform 0.8s ease;
+}
+
+body.facing-south .clock-number,
+body.facing-south .sun-time {
+  transform: scaleX(-1);
+}
+
+/* Earth cut-away (lower half of the dial) */
+#clock-earth {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 50%;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
   opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.6s ease, visibility 0s linear 0.6s;
 }
 
-body.compass-mode #vegetation-layer {
-  transition: opacity 0.5s ease, visibility 0.5s ease;
-  z-index: 21;
+body.compass-mode #clock-earth {
+  opacity: 0.82;
+  visibility: visible;
+  transition: opacity 0.6s ease;
 }
 
-/* In compass mode, tuck the person into the bottom-right corner of the
-   compass panel so it doesn't cover chatzosLayla / lower-half zmanim. */
+.earth-limestone { fill: var(--earth-limestone, #9c8c70); opacity: 0.75; }
+.earth-seam { fill: var(--earth-seam, #2f261f); opacity: 0.7; }
+.earth-stones { fill: var(--earth-stone, #b8a98c); opacity: 0.8; }
+.earth-topsoil { fill: var(--earth-topsoil, #4a3122); }
+.earth-rim { fill: none; stroke: rgba(0, 0, 0, 0.35); stroke-width: 0.6; vector-effect: non-scaling-stroke; }
+.earth-surface { stroke: var(--earth-surface, #8a9a5a); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+
+/* Mazalos sit in the sky: behind the clock glass and below the horizon */
+body.compass-mode .mazal {
+  z-index: 19;
+}
+
+/* The person stays centered, standing in front of the land */
 body.compass-mode .person-wrapper {
-  bottom: 1vmin;
-  left: auto;
-  right: 4vmin;
-  transform: scale(0.65);
-  transform-origin: bottom right;
-  opacity: 0.85;
-  transition: opacity 0.5s ease, transform 0.5s ease;
   z-index: 21;
 }
 
-/* Hide horizon glow in compass mode */
-body.compass-mode .horizon-glow {
-  opacity: 0 !important;
+/* Compass rose lying on the ground, to the right of the person (centered at
+   65% of the width, clear of the cypresses and the toolbar) */
+.ground-compass {
+  position: absolute;
+  left: calc(65% - 12vmin);
+  bottom: 4vmin;
+  width: 24vmin;
+  height: 24vmin;
+  z-index: 21;
+  pointer-events: none;
+  transform: perspective(60vmin) rotateX(64deg);
+  transform-origin: 50% 100%;
+  /* --gc-light: lit like the foreground (set by landscape.js) */
+  filter: brightness(var(--gc-light, 1)) drop-shadow(0 1.2vmin 0.8vmin rgba(0, 0, 0, 0.45));
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.6s ease, visibility 0s linear 0.6s;
 }
 
-/* Hide weather effects behind terrain in compass mode */
-body.compass-mode #weather-effects {
-  clip-path: inset(0 0 50dvh 0);
+body.compass-mode .ground-compass {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.6s ease;
 }
 
-body.compass-mode #cloud-container {
-  clip-path: inset(0 0 50dvh 0);
+.ground-compass svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-body.compass-mode #sky-effects {
-  clip-path: inset(0 0 50dvh 0);
-}
-
-/* Ensure rain/snow don't show below terrain line */
-body.compass-mode .rain-container,
-body.compass-mode .snow-container {
-  clip-path: inset(0 0 50dvh 0);
-}
-
-/* Fog should not show in compass mode */
-body.compass-mode .fog-layer {
-  opacity: 0 !important;
-}
+.gc-facing-north,
+.gc-north-far { display: none; }
+body:not(.facing-south) .gc-facing-north,
+body:not(.facing-south) .gc-north-far { display: inline; }
+body:not(.facing-south) .gc-facing-south,
+body:not(.facing-south) .gc-north-near { display: none; }
 
 /* Terrain button active state */
 .control-btn.terrain-btn.active {
@@ -1095,248 +645,128 @@ body.compass-mode .fog-layer {
   color: #4a9eff;
 }
 
-/* Normal terrain state transitions */
-.terrain-container {
-  transition: height 0.5s ease, opacity 0.5s ease, filter 0.5s ease, background 0.5s ease;
-  background: transparent;
-}
-
-#land-svg {
-  transition: opacity 0.5s ease;
-}
-
-#vegetation-layer {
-  transition: height 0.5s ease, opacity 0.5s ease, filter 0.5s ease;
-}
-
-.person-wrapper {
-  transition: opacity 0.5s ease, bottom 0.5s ease, filter 0.5s ease;
-}
-
-.grass-blade {
-  position: absolute;
-  width: 2px;
-  background: linear-gradient(to top, #1a2810, #2a3d1a);
-  border-radius: 0 0 1px 1px;
-  transform-origin: bottom center;
-  animation: grassSway calc(2s / var(--wind-intensity, 1)) ease-in-out infinite alternate;
-  opacity: 0.7;
-}
-
-@keyframes grassSway {
-  0% { transform: rotate(calc(-5deg * var(--wind-intensity, 1))); }
-  100% { transform: rotate(calc(5deg * var(--wind-intensity, 1))); }
-}
-
 /* ============================================================================
-   Vegetation
-   ============================================================================ */
-
-#vegetation-layer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  /* dvh, not vh — keep the foliage band aligned with the horizon line on
-     mobile when the URL bar shows/hides. */
-  height: 50dvh;
-  pointer-events: none;
-  z-index: 5;
-  filter: brightness(max(0.7, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1))));
-  transition: filter 0.5s ease;
-}
-
-.tree {
-  position: absolute;
-  bottom: 20%;
-  width: 14vmin;
-  height: 20vmin;
-  transform-origin: bottom center;
-  animation: treeSway calc(4s / var(--wind-intensity, 1)) ease-in-out infinite alternate;
-  transition: filter 2s ease;
-}
-
-.tree svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.tree .trunk { fill: #3d2817; }
-.tree .branch { stroke: #3d2817; }
-.tree .foliage { transition: fill 2s ease, opacity 2s ease; }
-
-.bush {
-  position: absolute;
-  bottom: 3%;
-  width: 6vmin;
-  height: 4vmin;
-  background: radial-gradient(ellipse at 50% 100%, #2a3d1a 0%, #1a2810 100%);
-  border-radius: 50% 50% 45% 45%;
-  z-index: 6;
-  transform-origin: bottom center;
-  animation: bushSway calc(3s / var(--wind-intensity, 1)) ease-in-out infinite alternate-reverse;
-  transition: background 2s ease;
-  box-shadow: inset 0 -1vmin 2vmin rgba(0, 0, 0, 0.3);
-}
-
-.bush.spring { background: radial-gradient(ellipse at 50% 100%, #5a8c41 0%, #3d5c2a 100%); }
-.bush.summer { background: radial-gradient(ellipse at 50% 100%, #2a3d1a 0%, #1a2810 100%); }
-.bush.fall { background: radial-gradient(ellipse at 50% 100%, #9c5c2c 0%, #6b3d1a 100%); }
-.bush.winter { background: radial-gradient(ellipse at 50% 100%, #4a4a3a 0%, #3a3a2a 100%); }
-
-@keyframes treeSway {
-  0% { transform: rotate(calc(-2deg * var(--wind-intensity, 1))); }
-  100% { transform: rotate(calc(2deg * var(--wind-intensity, 1))); }
-}
-
-@keyframes bushSway {
-  0% { transform: rotate(calc(-3deg * var(--wind-intensity, 1))) scaleX(0.98); }
-  100% { transform: rotate(calc(3deg * var(--wind-intensity, 1))) scaleX(1.02); }
-}
-
-/* ============================================================================
-   The Person
+   The Person - seen from behind (SVG in index.html, colors lit by landscape.js)
    ============================================================================ */
 
 .person-wrapper {
   position: fixed;
-  bottom: calc(35vh - 35vh);
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
+  transform-origin: bottom left;
   z-index: 7;
   width: 8vmin;
   height: 20vmin;
   pointer-events: none;
-  filter: brightness(max(0.6, calc(var(--terrain-brightness, 1) * var(--weather-dim, 1))));
-  transition: filter 0.5s ease;
+  transition: left 0.5s ease, bottom 0.5s ease, transform 0.5s ease, opacity 0.5s ease;
 }
 
 .person {
   position: relative;
   width: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  transform-origin: 50% 100%;
   animation: breathe 5s ease-in-out infinite;
 }
 
-.head {
-  width: 3.5vmin;
-  height: 4vmin;
-  background: linear-gradient(135deg, #2a2a2a 0%, #111 100%);
-  border-radius: 50%;
-  position: relative;
-  z-index: 2;
+.person-body,
+.person-head svg,
+.tzitzis svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* The head is the top 44 of the figure's 200 units, gently tilting as he
+   looks out at the sky */
+.person-head {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 22%;
+  transform-origin: 50% 80%;
   animation: headBob 7s ease-in-out infinite alternate;
 }
 
-/* Yarmulka — solid black cap on the crown. Hidden when the winter coat's
-   hood is active so we never stack a cap on a hood. */
-.hat {
+/* Tzitzis hang from the hem at each hip */
+.tzitzis {
   position: absolute;
-  top: -0.25vmin;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 3vmin;
-  height: 1.05vmin;
-  background: #000;
-  border-radius: 50% 50% 30% 30% / 100% 100% 30% 30%;
-  box-shadow: 0 0.15vmin 0.3vmin rgba(0, 0, 0, 0.55);
-  pointer-events: none;
+  top: 57%;
+  width: 12.5%;
+  height: 15%;
+  transform-origin: 50% 0;
+  animation: tzitzisSway 2.6s ease-in-out infinite alternate;
 }
 
-.person.winter-coat .hat { display: none; }
+.tzitzis-left { left: 27%; animation-delay: -0.4s; }
+.tzitzis-right { left: 60.5%; animation-delay: -1.1s; }
 
-.body {
-  width: 5.5vmin;
-  height: 8vmin;
-  background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
-  border-radius: 2vmin 2vmin 0 0;
-  margin-top: -0.5vmin;
-  z-index: 1;
-  position: relative;
-  transition: all 0.5s ease;
+.tzitzis path {
+  fill: none;
+  stroke: var(--p-tzitzis, #f2efe4);
+  stroke-width: 0.6;
+  stroke-linecap: round;
 }
 
-/* Tzitzis — four off-white strands hanging from below the body's bottom
-   corners. Sway tied to wind-intensity so they move with the trees. */
-.body::before,
-.body::after {
-  content: '';
-  position: absolute;
-  bottom: -1.6vmin;
-  width: 0.25vmin;
-  height: 1.6vmin;
-  background: linear-gradient(to bottom,
-    rgba(244, 236, 208, 0.95) 0%,
-    rgba(220, 210, 175, 0.85) 70%,
-    rgba(200, 190, 155, 0.7) 100%);
-  border-radius: 0 0 0.15vmin 0.15vmin;
-  transform-origin: top center;
-  animation: tzitzisSway calc(2.5s / var(--wind-intensity, 1)) ease-in-out infinite alternate;
-  box-shadow: 0.12vmin 0 0 rgba(244, 236, 208, 0.7),
-              -0.12vmin 0 0 rgba(244, 236, 208, 0.7);
-}
+/* Summer: white shirt and dark trousers */
+.p-trousers { fill: var(--p-trousers, #25272d); }
+.p-trousers-shade { fill: var(--p-trousers-shade, #1b1c21); }
+.p-shoes { fill: var(--p-shoes, #111113); }
+.p-torso, .p-sleeve { fill: var(--p-shirt, #ece8df); }
+.p-torso-shade, .p-sleeve-shade { fill: var(--p-shirt-shade, #aaa79f); opacity: 0.6; }
+.p-collar { fill: var(--p-shirt-shade, #aaa79f); }
+.p-jacket, .p-jacket-shade, .p-coat, .p-coat-shade { display: none; }
+.p-hand, .p-ear { fill: var(--p-skin, #c59a7d); }
+.p-neck { fill: var(--p-skin-shade, #8e6f5a); }
+.p-hair { fill: var(--p-hair, #2b221c); }
+.p-hair-shade { fill: var(--p-hair-shade, #1f1814); }
+.p-payos { fill: none; stroke: var(--p-hair, #2b221c); stroke-width: 1.5; stroke-linecap: round; }
+.p-hat-crown { fill: var(--p-hat, #18191e); }
+.p-hat-band { fill: var(--p-band, #3d3d44); }
+.p-hat-dent { fill: none; stroke: var(--p-hat-shade, #111215); stroke-width: 0.8; }
+.p-hat-shine { fill: none; stroke: rgba(255, 255, 255, 0.16); stroke-width: 0.7; stroke-linecap: round; }
 
-.body::before { left: 0.4vmin; animation-delay: -0.4s; }
-.body::after  { right: 0.4vmin; animation-delay: -0.9s; }
+/* Spring and fall: a black suit jacket over the white shirt */
+.person.jacket .p-torso,
+.person.jacket .p-torso-shade { display: none; }
+.person.jacket .p-jacket { display: block; fill: var(--p-jacket, #1d1e23); }
+.person.jacket .p-jacket-shade { display: block; fill: var(--p-jacket-shade, #141418); }
+.person.jacket .p-sleeve { fill: var(--p-jacket, #1d1e23); }
+.person.jacket .p-sleeve-shade { fill: var(--p-jacket-shade, #141418); opacity: 1; }
+.person.jacket .p-collar { fill: var(--p-shirt, #ece8df); }
+.person.jacket .tzitzis { top: 64.5%; }
+.person.jacket .tzitzis-left { left: 24%; }
+.person.jacket .tzitzis-right { left: 63.5%; }
 
-@keyframes tzitzisSway {
-  0%   { transform: rotate(calc(-4deg * var(--wind-intensity, 1))); }
-  100% { transform: rotate(calc(4deg * var(--wind-intensity, 1))); }
-}
-
-.person.sweater .body {
-  background: linear-gradient(180deg, #4a3728 0%, #3a2718 100%);
-}
-
-.person.winter-coat .body {
-  background: linear-gradient(180deg, #1a3a5a 0%, #0a2a4a 100%);
-  border-radius: 2.5vmin 2.5vmin 0 0;
-  width: 6vmin;
-}
-
-.person.winter-coat .head::after {
-  content: '';
-  position: absolute;
-  top: -1vmin;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4vmin;
-  height: 2vmin;
-  background: #3a3a3a;
-  border-radius: 50% 50% 0 0;
-}
-
-.legs {
-  width: 5vmin;
-  height: 8vmin;
-  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
-  border-radius: 0 0 1vmin 1vmin;
-}
-
-.shadow {
-  position: absolute;
-  bottom: -0.5vmin;
-  width: 10vmin;
-  height: 2vmin;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 50%;
-  transform: scaleY(0.4);
-  z-index: 0;
-  filter: blur(4px);
-}
+/* Winter: a long black coat */
+.person.winter-coat .p-torso,
+.person.winter-coat .p-torso-shade { display: none; }
+.person.winter-coat .p-coat { display: block; fill: var(--p-coat, #222329); }
+.person.winter-coat .p-coat-shade { display: block; fill: var(--p-coat-shade, #18191d); }
+.person.winter-coat .p-sleeve { fill: var(--p-coat, #222329); }
+.person.winter-coat .p-sleeve-shade { fill: var(--p-coat-shade, #18191d); opacity: 1; }
+.person.winter-coat .p-collar { fill: var(--p-coat-shade, #18191d); }
+.person.winter-coat .tzitzis { top: 74.5%; }
+.person.winter-coat .tzitzis-left { left: 21%; }
+.person.winter-coat .tzitzis-right { left: 66%; }
 
 @keyframes breathe {
   0%, 100% { transform: scaleY(1); }
-  50% { transform: scaleY(1.015); }
+  50% { transform: scaleY(1.012); }
 }
 
 @keyframes headBob {
-  0% { transform: rotate(-1deg) translateY(0); }
-  100% { transform: rotate(1deg) translateY(0.5px); }
+  0% { transform: rotate(-1.2deg); }
+  100% { transform: rotate(1.2deg); }
+}
+
+@keyframes tzitzisSway {
+  0% { transform: rotate(-5deg); }
+  100% { transform: rotate(5deg); }
 }
 
 /* ============================================================================
@@ -1677,11 +1107,6 @@ body.compass-mode .fog-layer {
 .nav-button,
 .speed-button,
 .reset-button {
-  display: none !important;
-}
-
-/* Hide weather info display */
-#weather-info {
   display: none !important;
 }
 

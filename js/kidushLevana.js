@@ -5,8 +5,10 @@
 // molad. Every cycle is treated as exactly that length, so day-count and
 // halfway-through-month are pure arithmetic.
 //
-// Reference: Molad of Tishrei 5786 — Mon Sep 22, 2025, 12:10 PM IDT (UTC+3)
-// + 7 chalakim (≈ 23.333 sec) → 09:10:23.333 UTC.
+// Reference: Molad of Tishrei 5786 — Mon Sep 22, 2025, 12:10 PM + 7 chalakim
+// (≈ 23.333 sec). Molad times come from the traditional calculation, which
+// counts hours on Jerusalem's local mean solar time (UTC+2:20:56, no daylight
+// saving), so the moment is 12:10:23.333 − 2:20:56 → 09:49:27.333 UTC.
 // ============================================================================
 
 // 1 chelek = 1/1080 hour = 3600/1080 sec = 10/3 sec
@@ -15,8 +17,11 @@ const CHELEK_MS = 10000 / 3;
 // Average month: 29.5 days + 793 chalakim
 export const MONTH_MS = 29.5 * 86400000 + 793 * CHELEK_MS;
 
+// Jerusalem mean time is UTC + 35.2342°E / 15 = UTC+2:20:56
+const JERUSALEM_MEAN_TIME_OFFSET_MS = (2 * 3600 + 20 * 60 + 56) * 1000;
+
 // Tishrei 5786 reference molad in absolute UTC ms
-export const MOLAD_REFERENCE_MS = Date.UTC(2025, 8, 22, 9, 10, 23, 333);
+export const MOLAD_REFERENCE_MS = Date.UTC(2025, 8, 22, 12, 10, 23, 333) - JERUSALEM_MEAN_TIME_OFFSET_MS;
 
 // Boundaries
 const HOURS_11_DAYS_MS      = 11 * 86400000;   // count-up → countdown switch

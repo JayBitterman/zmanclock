@@ -31,7 +31,9 @@ export function positionClockNumbers() {
     
     clockNumber.style.left = `${50 + (x / clockRadius) * 50}%`;
     clockNumber.style.top = `${50 + (y / clockRadius) * 50}%`;
-    clockNumber.style.transform = `translate(-50%, -50%)`;
+    // Centered with the `translate` property, leaving `transform` free for the
+    // CSS that flips the lettering back when the dial is mirrored
+    clockNumber.style.translate = '-50% -50%';
     
     angle -= 15;
   }
@@ -69,45 +71,74 @@ export function setClockHand() {
   }
   
   state.prevTotalDegrees = totalDegrees;
-  
+
   // Disable CSS transition during time acceleration for responsive fast-forward
   // At 10x+ speed, the hand needs to jump quickly to show passage of time
   const isAccelerated = Math.abs(state.speedMultiplier || 0) >= 10;
-  if (isAccelerated) {
-    singleHand.style.transition = 'none';
-  } else {
-    singleHand.style.transition = 'transform 150ms linear';
-  }
-  
-  singleHand.style.transform = `rotate(${state.accumulatedRotation}deg)`;
-  
+  setStyle(singleHand, 'transition', isAccelerated ? 'none' : 'transform 150ms linear');
+
+  // At normal speed the hand moves ~0.0002° per frame; rounding to 0.01°
+  // means the DOM is touched every couple of seconds instead of every frame.
+  setStyle(singleHand, 'transform', `rotate(${state.accumulatedRotation.toFixed(2)}deg)`);
+
   // Position sun element
   positionSun();
+}
+
+// Last value written per element + property, so unchanged values skip the DOM
+// (every style write costs a style recalc, even when the value is the same).
+const writtenStyles = new WeakMap();
+
+function setStyle(element, property, value) {
+  let written = writtenStyles.get(element);
+  if (!written) {
+    written = {};
+    writtenStyles.set(element, written);
+  }
+  if (written[property] === value) return;
+  written[property] = value;
+  element.style[property] = value;
 }
 
 /**
  * Positions the sun on the clock face
  */
 function positionSun() {
-  const clockFace = document.querySelector('.clock-face');
   const sunElement = document.getElementById('sun');
-  if (!clockFace || !sunElement) return;
-  
-  const clockRadius = clockFace.offsetWidth / 2;
+  if (!sunElement) return;
+
   const x = Math.cos(state.sunTheta * Math.PI / 180);
   const y = Math.sin(state.sunTheta * Math.PI / 180);
-  
+
   const size = 6;
   const scale = 0.9;
-  sunElement.style.width = `${size}vmin`;
-  sunElement.style.height = `${size}vmin`;
-  
-  const left = 50 + x * scale * 50 - (50 * sunElement.offsetWidth) / (2 * clockRadius);
-  const top = 50 - y * scale * 50 - (50 * sunElement.offsetHeight) / (2 * clockRadius);
-  
-  sunElement.style.left = `${left}%`;
-  sunElement.style.top = `${top}%`;
+  setStyle(sunElement, 'width', `${size}vmin`);
+  setStyle(sunElement, 'height', `${size}vmin`);
+
+  // Centered via translate(-50%, -50%) so no layout read is needed per frame.
+  setStyle(sunElement, 'transform', 'translate(-50%, -50%)');
+  const left = 50 + x * scale * 50;
+  const top = 50 - y * scale * 50;
+  setStyle(sunElement, 'left', `${left.toFixed(2)}%`);
+  setStyle(sunElement, 'top', `${top.toFixed(2)}%`);
+
+  // In compass mode the lower half of the dial is the earth: when the sun is
+  // down there, a warm glow marks where it's buried
+  const glow = document.getElementById('earth-sun-glow');
+  if (glow) {
+    const cx = left.toFixed(1), cy = (top - 50).toFixed(1);
+    const opacity = Math.max(0, Math.min(1, (top - 50) / 4)).toFixed(2);
+    const w = writtenStyles.get(glow) || {};
+    if (w.cx !== cx || w.cy !== cy || w.opacity !== opacity) {
+      glow.setAttribute('cx', cx);
+      glow.setAttribute('cy', cy);
+      glow.setAttribute('opacity', opacity);
+      writtenStyles.set(glow, { cx, cy, opacity });
+    }
+  }
 }
+
+let lastMoonPhase = null;
 
 /**
  * Positions and renders the moon with correct orientation
@@ -115,25 +146,34 @@ function positionSun() {
 export function positionMoon() {
   const moonHolder = document.getElementById('moon');
   if (!moonHolder) return;
-  
+
   const moonData = calculateMoonData();
-  
+  if (!moonData) {
+    // Moon doesn't rise or set today at this latitude
+    setStyle(moonHolder, 'display', 'none');
+    return;
+  }
+  setStyle(moonHolder, 'display', '');
+
   // Position on clock face
   const x = Math.cos(moonData.progressAngle * Math.PI / 180);
   const y = Math.sin(moonData.progressAngle * Math.PI / 180);
   const moonSize = 4;
-  
-  moonHolder.style.left = `${50 + x * 50}%`;
-  moonHolder.style.top = `${50 - y * 50}%`;
-  moonHolder.style.width = `${moonSize}vmin`;
-  moonHolder.style.height = `${moonSize}vmin`;
-  
+
+  setStyle(moonHolder, 'left', `${(50 + x * 50).toFixed(2)}%`);
+  setStyle(moonHolder, 'top', `${(50 - y * 50).toFixed(2)}%`);
+  setStyle(moonHolder, 'width', `${moonSize}vmin`);
+  setStyle(moonHolder, 'height', `${moonSize}vmin`);
+
   // Apply the correct rotation for observer's view
-  moonHolder.style.transform = `translate(-50%, -50%) rotate(${moonData.rotationDeg}deg)`;
-  
-  // Render moon phase
-  moonHolder.innerHTML = '';
-  renderMoon(moonHolder, moonSize / 2, moonData.phaseAngle, moonData.waning);
+  setStyle(moonHolder, 'transform', `translate(-50%, -50%) rotate(${moonData.rotationDeg}deg)`);
+
+  // Render moon phase (only rebuilt when the phase is recalculated)
+  if (moonData.phaseAngle !== lastMoonPhase || !moonHolder.firstChild) {
+    lastMoonPhase = moonData.phaseAngle;
+    moonHolder.innerHTML = '';
+    renderMoon(moonHolder, moonSize / 2, moonData.phaseAngle, moonData.waning);
+  }
 }
 
 /**
@@ -193,6 +233,10 @@ function renderMoon(holderNode, R, phase, waning) {
   holderNode.appendChild(sphere);
 }
 
+// Bumped whenever a zman label moves, so other layers (the mazalos) know to
+// re-measure the labels instead of reading layout every frame.
+export let sunTimesLayoutVersion = 0;
+
 /**
  * Places sun times around the clock face
  * OPTIMIZED: Reuse existing elements instead of destroying/creating
@@ -204,11 +248,12 @@ export function placeSunTimes() {
 
   const clockFace = document.querySelector('.clock-face');
   const sunTimesContainer = document.getElementById("sun-times");
-  if (!clockFace || !sunTimesContainer || !state.sunTimes.sunrise) return;  
+  if (!clockFace || !sunTimesContainer || !state.sunTimes.sunrise) return;
 
-  const clockRadius = clockFace.offsetWidth / 2;
-  const radius = clockRadius;
-  
+  // Reading offsetWidth forces a synchronous style recalc, so only do it when
+  // a label actually needs repositioning (this runs 10x per second).
+  let clockRadius = null;
+
   const todaySunrise = state.sunTimes.sunrise;
   const todaySunset = state.sunTimes.sunset;
   const tomorrowSunrise = state.sunTimes.nextSunrise;
@@ -246,22 +291,20 @@ export function placeSunTimes() {
     }
 
     // Always check color (cheap)
-    // Color coding
-    let color;
-    if (time < state.date) {
-      color = `rgb(72,72,72)`;
-    } else if (time - state.date < 600000) {
-      color = 'yellow';
-    } else {
-      color = 'white';
-    }
-    
+    // Color coding: yellow in the last 10 minutes; passed zmanim fade out
+    // (as faded white, so they stay readable on both the day and night sky)
+    const past = time < state.date;
+    const color = !past && time - state.date < 600000 ? 'yellow' : 'white';
     if (sunTimeElement.style.color !== color) {
       sunTimeElement.style.color = color;
+    }
+    if (sunTimeElement.classList.contains('past') !== past) {
+      sunTimeElement.classList.toggle('past', past);
     }
 
     // If time hasn't changed, skip DOM layout calculations
     if (!needsPosUpdate) continue;
+    sunTimesLayoutVersion++;
 
     // UPDATE CONTENT & POSITION
     sunTimeElement.setAttribute("time", timeMs);
@@ -308,6 +351,8 @@ export function placeSunTimes() {
     }
     
     // Position on clock face
+    if (clockRadius === null) clockRadius = clockFace.offsetWidth / 2;
+    const radius = clockRadius;
     const radians = theta * Math.PI / 180;
     let x = Math.cos(radians) * radius;
     let y = Math.sin(radians) * radius;
@@ -333,6 +378,6 @@ export function placeSunTimes() {
 
     sunTimeElement.style.left = `${50 + (x / clockRadius) * 50}%`;
     sunTimeElement.style.top = `${50 + (y / clockRadius) * 50}%`;
-    sunTimeElement.style.transform = `translate(-50%, -50%)`;
+    sunTimeElement.style.translate = '-50% -50%';
   }
 }

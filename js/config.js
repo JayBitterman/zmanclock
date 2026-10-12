@@ -95,6 +95,31 @@ export const state = {
 };
 
 // ============================================================================
+// Timezone & date formatting helpers
+// ============================================================================
+
+const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+/** The timezone zmanim are shown in: the custom location's, else the browser's. */
+export function activeTimezone() {
+  return state.timezone || BROWSER_TIMEZONE;
+}
+
+// Constructing an Intl.DateTimeFormat is expensive and the clock formats dates
+// every frame, so keep one formatter per timezone + options combination.
+const formatterCache = new Map();
+
+export function getDateFormatter(timeZone, options) {
+  const key = timeZone + JSON.stringify(options);
+  let formatter = formatterCache.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', { ...options, timeZone });
+    formatterCache.set(key, formatter);
+  }
+  return formatter;
+}
+
+// ============================================================================
 // Day & Speed Navigation Button Config
 // ============================================================================
 

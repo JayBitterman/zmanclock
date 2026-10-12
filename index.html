@@ -23,12 +23,14 @@
     <link rel="modulepreload" href="js/clock.js">
     <link rel="modulepreload" href="js/ui.js">
     <link rel="modulepreload" href="js/hebrew.js">
-    <link rel="modulepreload" href="js/scene.js">
-    <link rel="modulepreload" href="js/weather.js">
+    <link rel="modulepreload" href="js/sky.js">
+    <link rel="modulepreload" href="js/starData.js">
+    <link rel="modulepreload" href="js/mazalos.js">
+    <link rel="modulepreload" href="js/mazalData.js">
+    <link rel="modulepreload" href="js/landscape.js">
     <link rel="modulepreload" href="js/location.js">
     <link rel="modulepreload" href="js/calendar.js">
     <link rel="modulepreload" href="js/kidushLevana.js">
-    <link rel="modulepreload" href="js/zodiac.js">
 
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="clock_gradient_icon.png" type="image/png">
@@ -42,80 +44,122 @@
             </div>
             <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
                 
-        <!-- Sky effects layer (stars, birds) -->
-        <div id="sky-effects">
-            <!-- Animated birds -->
-            <div class="bird-container bird-container-one">
-                <div class="bird bird-one"></div>
-            </div>
-            <div class="bird-container bird-container-two">
-                <div class="bird bird-two"></div>
-            </div>
-            <div class="bird-container bird-container-three">
-                <div class="bird bird-three"></div>
-            </div>
-            <div class="bird-container bird-container-four">
-                <div class="bird bird-four"></div>
+        <!-- Sky: the gradient is on #screen; sunrise/sunset glow and real stars -->
+        <div id="sky" aria-hidden="true">
+            <div id="sun-glow"></div>
+            <div id="star-layer">
+                <canvas id="star-canvas"></canvas>
+                <div id="star-twinkles"></div>
             </div>
         </div>
-        
-        <!-- Weather effects layer (clouds, rain, snow, fog, lightning) -->
-        <div id="weather-effects"></div>
 
-        <!-- Horizon glow -->
-        <div class="horizon-glow"></div>
+        <!-- The 12 mazalos: a ring around the clock, or across the sky in compass mode -->
+        <div id="mazal-layer" aria-hidden="true"></div>
 
-        <!-- Zodiac constellation layer -->
-        <div id="zodiac-layer" aria-hidden="true"></div>
-
-        <!-- Vegetation layer (trees, bushes) -->
-        <div id="vegetation-layer"></div>
-        
-        <!-- Terrain container -->
+        <!-- Judean hills landscape (drawn by landscape.js) -->
         <div class="terrain-container">
-            <svg id="land-svg" preserveAspectRatio="none" viewBox="0 0 100 100">
-                <path id="land-back" class="land-layer" d="" />
-                <path id="land-mid" class="land-layer" d="" />
-                <path id="land-front" class="land-layer" d="" />
-            </svg>
-            
-            <!-- Compass overlay (visible in compass mode) -->
-            <div class="compass-overlay" id="compass-overlay">
-                <svg class="compass-svg" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
-                    <!-- Outer ellipse ring (perspective view - flat on ground) -->
-                    <ellipse cx="200" cy="100" rx="180" ry="70" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
-                    
-                    <!-- Direction labels - N at top (away), S at bottom (near), E on right, W on left -->
-                    <text x="200" y="22" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="20" font-weight="700">N</text>
-                    <text x="200" y="190" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="20" font-weight="700">S</text>
-                    <text x="250" y="105" text-anchor="start" fill="rgba(255,255,255,1)" font-size="20" font-weight="700">E</text>
-                    <text x="150" y="105" text-anchor="end" fill="rgba(255,255,255,1)" font-size="20" font-weight="700">W</text>
-                    
-                    <!-- Intercardinal labels -->
-                    <text x="320" y="45" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="15">NE</text>
-                    <text x="80" y="45" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="15">NW</text>
-                    <text x="320" y="165" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="15">SE</text>
-                    <text x="80" y="165" text-anchor="middle" fill="rgba(255,255,255,1)" font-size="15">SW</text>
-                    
-                    <!-- Compass center point -->
-                    <circle cx="200" cy="100" r="6" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
-                    
-                    <!-- Compass needle pointing North (foreshortened due to perspective) -->
-                    <polygon points="200,35 205,90 200,100 195,90" fill="#e74c3c" opacity="0.85"/>
-                    <polygon points="200,165 205,110 200,100 195,110" fill="rgba(255,255,255,0.5)"/>
-                </svg>
-            </div>
+            <svg id="land-svg" preserveAspectRatio="none" aria-hidden="true"></svg>
+            <!-- Same hills with the land raised to the horizon, for compass mode -->
+            <svg id="land-svg-compass" preserveAspectRatio="none" aria-hidden="true"></svg>
         </div>
 
-        <!-- Person silhouette -->
-        <div class="person-wrapper">
+        <!-- Compass mode: a compass rose lying on the ground. Facing south (the
+             northern hemisphere) S is ahead and N toward you; facing north the
+             reverse. -->
+        <div class="ground-compass" aria-hidden="true">
+            <svg viewBox="-100 -100 200 200">
+                <defs>
+                    <radialGradient id="gc-face" r="0.6">
+                        <stop offset="0" stop-color="#3a3326"/>
+                        <stop offset="1" stop-color="#1d1a14"/>
+                    </radialGradient>
+                    <linearGradient id="gc-brass" x1="0" y1="-1" x2="0" y2="1">
+                        <stop offset="0" stop-color="#f6e2a4"/>
+                        <stop offset="0.5" stop-color="#c49a45"/>
+                        <stop offset="1" stop-color="#7a5a20"/>
+                    </linearGradient>
+                </defs>
+                <circle r="96" fill="url(#gc-brass)"/>
+                <circle r="86" fill="url(#gc-face)"/>
+                <circle r="62" fill="none" stroke="rgba(246, 226, 164, 0.35)" stroke-width="1.5"/>
+                <g class="gc-ticks" stroke="rgba(246, 226, 164, 0.55)" stroke-width="2">
+                    <path d="M0,-86 V-78 M0,86 V78 M-86,0 H-78 M86,0 H78 M60.8,-60.8 L55.2,-55.2 M-60.8,-60.8 L-55.2,-55.2 M60.8,60.8 L55.2,55.2 M-60.8,60.8 L-55.2,55.2"/>
+                </g>
+                <!-- Four-point rose; the north point is red -->
+                <path fill="#e8dcc0" d="M0,-70 L11,-11 L0,0 Z M70,0 L11,11 L0,0 Z M0,70 L-11,11 L0,0 Z M-70,0 L-11,-11 L0,0 Z"/>
+                <path fill="#a89a7c" d="M0,-70 L-11,-11 L0,0 Z M70,0 L11,-11 L0,0 Z M0,70 L11,11 L0,0 Z M-70,0 L-11,11 L0,0 Z"/>
+                <path class="gc-north-far" fill="#c8402f" d="M0,-70 L11,-11 L0,0 L-11,-11 Z"/>
+                <path class="gc-north-near" fill="#c8402f" d="M0,70 L11,11 L0,0 L-11,11 Z"/>
+                <circle r="6" fill="url(#gc-brass)"/>
+                <g class="gc-letters" font-family="Heebo, Inter, sans-serif" font-weight="700" font-size="22" text-anchor="middle" dominant-baseline="central" fill="#f3e6c4">
+                    <g class="gc-facing-south">
+                        <text x="0" y="-77">S</text><text x="0" y="77">N</text>
+                        <text x="-77" y="0">E</text><text x="77" y="0">W</text>
+                    </g>
+                    <g class="gc-facing-north">
+                        <text x="0" y="-77">N</text><text x="0" y="77">S</text>
+                        <text x="-77" y="0">W</text><text x="77" y="0">E</text>
+                    </g>
+                </g>
+            </svg>
+        </div>
+
+        <!-- The person, seen from behind looking out at the view. Colors come
+             from CSS variables lit like the foreground; head and tzitzis are
+             separate elements so their sway animates on the compositor. -->
+        <div class="person-wrapper" aria-hidden="true">
             <div class="person">
-                <div class="head">
-                    <div class="hat"></div>
+                <svg class="person-body" viewBox="0 0 80 200">
+                    <defs>
+                        <radialGradient id="person-shadow">
+                            <stop offset="0" stop-color="#000" stop-opacity="0.45"/>
+                            <stop offset="1" stop-color="#000" stop-opacity="0"/>
+                        </radialGradient>
+                    </defs>
+                    <ellipse cx="40" cy="194" rx="27" ry="5" fill="url(#person-shadow)"/>
+                    <!-- Trousers and shoes -->
+                    <path class="p-trousers" d="M25,110 L55,110 L53.6,187 L43.6,187 L41.3,139 L38.7,139 L36.4,187 L26.4,187 Z"/>
+                    <path class="p-trousers-shade" d="M40.6,116 L43,139 L45.6,187 L50,187 L47,130 Z"/>
+                    <path class="p-shoes" d="M25.2,185 H37.6 Q39.8,185 39.8,189 V192 Q39.8,194 37.8,194 H25.4 Q23.4,194 23.6,191 Z"/>
+                    <path class="p-shoes" d="M42.4,185 H54.8 Q56.6,185 56.4,189 V192 Q56.2,194 54.2,194 H42.2 Q40.4,194 40.4,192 V189 Q40.4,185 42.4,185 Z"/>
+                    <!-- Long winter coat -->
+                    <path class="p-coat" d="M19,50 Q20.5,40.5 31,38.5 L49,38.5 Q59.5,40.5 61,50 L64.5,151 Q40,156 15.5,151 Z"/>
+                    <path class="p-coat-shade" d="M40,46 L40.8,153 L44,153 Q42,100 41.6,46 Z M52,60 Q60,100 62,150 L64.5,151 L61,50 Z"/>
+                    <!-- Suit jacket (spring and fall) -->
+                    <path class="p-jacket" d="M19.4,50.5 Q21,41 31.2,39 L48.8,39 Q59,41 60.6,50.5 L59.8,128 Q40,132 20.2,128 Z"/>
+                    <path class="p-jacket-shade" d="M40,44 Q41,85 40.4,130 L42.8,130.4 Q42.8,85 41.6,44 Z M52,56 Q59.6,90 59.8,128 L60.6,50.5 Z"/>
+                    <!-- White shirt (summer) -->
+                    <path class="p-torso" d="M20,51 Q21.5,41.5 31.5,39.5 L48.5,39.5 Q58.5,41.5 60,51 L57.6,116 Q40,120 22.4,116 Z"/>
+                    <path class="p-torso-shade" d="M40,44 Q41.5,80 40.6,118 L44,118.6 Q44,80 41.6,44 Z M51,52 Q58,80 57.6,116 L60,51 Z"/>
+                    <!-- Arms -->
+                    <path class="p-sleeve" d="M20.6,49.5 Q14.4,52.5 13.8,66 L14.4,107 Q16,110.5 20.6,109.5 L23.4,66 Z"/>
+                    <path class="p-sleeve" d="M59.4,49.5 Q65.6,52.5 66.2,66 L65.6,107 Q64,110.5 59.4,109.5 L56.6,66 Z"/>
+                    <path class="p-sleeve-shade" d="M62,55 Q66,62 66.2,66 L65.6,107 Q64,110.5 61,110 Q63.5,80 62,55 Z"/>
+                    <ellipse class="p-hand" cx="17.4" cy="112" rx="3.4" ry="4.4"/>
+                    <ellipse class="p-hand" cx="62.6" cy="112" rx="3.4" ry="4.4"/>
+                    <!-- Neck and collar -->
+                    <path class="p-neck" d="M34.8,28 L45.2,28 L46.2,41 L33.8,41 Z"/>
+                    <path class="p-collar" d="M32.6,40.6 Q40,45 47.4,40.6 L46.6,37.4 Q40,40.8 33.4,37.4 Z"/>
+                </svg>
+                <div class="person-head">
+                    <svg viewBox="0 0 80 44">
+                        <ellipse class="p-ear" cx="29.6" cy="23.5" rx="2.3" ry="3.7"/>
+                        <ellipse class="p-ear" cx="50.4" cy="23.5" rx="2.3" ry="3.7"/>
+                        <path class="p-hair" d="M40,8.5 C47,8.5 51,13.5 51,21.5 C51,29.5 47,35.5 40,35.5 C33,35.5 29,29.5 29,21.5 C29,13.5 33,8.5 40,8.5 Z"/>
+                        <path class="p-hair-shade" d="M44,10 C49,12.5 51,17 51,21.5 C51,29.5 47,35.5 40,35.5 C45,32 47,26 47,20 C47,15 45.5,12 44,10 Z"/>
+                        <!-- Payos hanging in front of the ears -->
+                        <path class="p-payos" d="M29.4,18.5 C27.2,21.5 30.6,24 28.6,27 C26.8,29.8 30.2,32.2 28.4,35.4"/>
+                        <path class="p-payos" d="M50.6,18.5 C52.8,21.5 49.4,24 51.4,27 C53.2,29.8 49.8,32.2 51.6,35.4"/>
+                        <!-- Black hat -->
+                        <path class="p-hat-crown" d="M30.6,15 C30.4,6 33,2 40,2 C47,2 49.6,6 49.4,15 Z"/>
+                        <path class="p-hat-band" d="M30.7,11.4 L49.3,11.4 L49.4,14.8 L30.6,14.8 Z"/>
+                        <path class="p-hat-crown" d="M21.5,15.8 Q21.5,13.2 30,13.2 L50,13.2 Q58.5,13.2 58.5,15.8 Q58.5,18.4 40,18.4 Q21.5,18.4 21.5,15.8 Z"/>
+                        <path class="p-hat-dent" d="M36.4,2.8 Q40,6.4 43.6,2.8"/>
+                        <path class="p-hat-shine" d="M32.2,7.5 Q33,3.6 37.4,2.7"/>
+                    </svg>
                 </div>
-                <div class="body"></div>
-                <div class="legs"></div>
-                <div class="shadow"></div>
+                <div class="tzitzis tzitzis-left"><svg viewBox="0 0 10 30"><path d="M3,0 Q2.6,15 2,29 M4.4,0 Q4.4,15 4,30 M5.8,0 Q6,15 6.4,28 M7.2,0 Q7.8,14 8.4,27"/></svg></div>
+                <div class="tzitzis tzitzis-right"><svg viewBox="0 0 10 30"><path d="M2.8,0 Q2.2,14 1.6,27 M4.2,0 Q4,15 3.6,28 M5.6,0 Q5.6,15 6,30 M7,0 Q7.4,15 8,29"/></svg></div>
             </div>
         </div>
 
@@ -142,13 +186,10 @@
             <div id="location-display" style="color: var(--cal-accent); font-size: 2.5vmin; margin-top: 0.5vmin; font-weight: 500; text-shadow: var(--text-shadow);"></div>
         </div>
         
-        <!-- Weather info display (hidden) -->
-        <div id="weather-info"></div>
-        
         <!-- Controls container (hidden by default) -->
         <div class="controls-container" id="controls-container">
 
-            <!-- Compass mode toggle (also reveals the zodiac overlay) -->
+            <!-- Compass mode toggle (also moves the mazalos out into the sky) -->
             <div class="button-group terrain-group">
                 <button class="control-btn terrain-btn" id="btn-terrain" title="Toggle Compass &amp; Zodiac View">
                     <i class="fa-regular fa-compass"></i>
@@ -224,9 +265,74 @@
                 <div class="clock-face"></div>
                 <div id="clock-numbers"></div>
                 <div id="sun-times"></div>
-                <div class="hand single-hand"></div>
+                <!-- Grandfather-clock hand: brass, with a pierced spade near the
+                     tip and a counterweight ring on the tail. The pivot is at
+                     x = 0 (the hand's right edge); the tip points to -x. -->
+                <div class="hand single-hand">
+                    <svg class="hand-svg" viewBox="-460 -24 556 48" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="hand-brass" gradientUnits="userSpaceOnUse" x1="0" y1="-22" x2="0" y2="22">
+                                <stop offset="0" stop-color="#fff3c8"/>
+                                <stop offset="0.38" stop-color="#e3be64"/>
+                                <stop offset="0.62" stop-color="#b38431"/>
+                                <stop offset="1" stop-color="#6c4a15"/>
+                            </linearGradient>
+                            <radialGradient id="hand-boss" gradientUnits="userSpaceOnUse" cx="-6" cy="-7" r="26">
+                                <stop offset="0" stop-color="#fff7da"/>
+                                <stop offset="0.45" stop-color="#d8b05a"/>
+                                <stop offset="1" stop-color="#674510"/>
+                            </radialGradient>
+                        </defs>
+                        <g fill="url(#hand-brass)" stroke="#2a1c06" stroke-width="2.4" stroke-linejoin="round" fill-rule="evenodd">
+                            <!-- Counterweight tail -->
+                            <path d="M14,-3.6 L61,-2.6 L61,2.6 L14,3.6 Z"/>
+                            <path d="M72,-14 A14,14 0 1,1 72,14 A14,14 0 1,1 72,-14 Z M72,-7 A7,7 0 1,0 72,7 A7,7 0 1,0 72,-7 Z"/>
+                            <path d="M86,0 L92,-4.5 L95,0 L92,4.5 Z"/>
+                            <!-- Shaft with a bead -->
+                            <path d="M-14,-4.8 L-280,-2.6 L-280,2.6 L-14,4.8 Z"/>
+                            <path d="M-70,0 A5,7.5 0 1,1 -60,0 A5,7.5 0 1,1 -70,0 Z"/>
+                            <!-- Pierced spade -->
+                            <path d="M-278,-2.6 C-292,-2.8 -300,-19 -322,-21 C-344,-23 -362,-14 -370,-7 C-376,-3 -383,-2.2 -394,-2.2 L-394,2.2 C-383,2.2 -376,3 -370,7 C-362,14 -344,23 -322,21 C-300,19 -292,2.8 -278,2.6 Z M-298,-4.6 C-305,-14 -322,-17 -338,-15.5 C-350,-14 -358,-9 -363,-4.4 Z M-298,4.6 C-305,14 -322,17 -338,15.5 C-350,14 -358,9 -363,4.4 Z"/>
+                            <!-- Arrow tip -->
+                            <path d="M-392,-2.2 L-402,-2.2 C-410,-8.5 -418,-9.5 -426,-6 L-460,0 L-426,6 C-418,9.5 -410,8.5 -402,2.2 L-392,2.2 Z"/>
+                        </g>
+                        <!-- Center boss -->
+                        <circle r="20" fill="url(#hand-boss)" stroke="#2a1c06" stroke-width="2.4"/>
+                        <circle r="12" fill="none" stroke="#6a4812" stroke-width="1.8" opacity="0.8"/>
+                        <circle r="4.5" fill="#2a1c06"/>
+                    </svg>
+                </div>
                 <div id="sun"></div>
                 <div id="moon"></div>
+                <!-- Compass mode: the lower half of the dial is a cut-away into the
+                     earth. The sun and hand show dimly through it, and the sun
+                     glows where it's buried. -->
+                <svg id="clock-earth" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                        <clipPath id="earth-clip"><path d="M0,0 A50,50 0 0,0 100,0 Z"/></clipPath>
+                        <linearGradient id="earth-depth" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" style="stop-color:var(--earth-top, #5f4030)"/>
+                            <stop offset="0.45" style="stop-color:var(--earth-mid, #554536)"/>
+                            <stop offset="1" style="stop-color:var(--earth-deep, #2a231d)"/>
+                        </linearGradient>
+                        <radialGradient id="earth-sun-glow">
+                            <stop offset="0" stop-color="#ffc062" stop-opacity="0.95"/>
+                            <stop offset="0.3" stop-color="#ff8f2e" stop-opacity="0.5"/>
+                            <stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/>
+                        </radialGradient>
+                    </defs>
+                    <g clip-path="url(#earth-clip)">
+                        <rect width="100" height="50" fill="url(#earth-depth)"/>
+                        <!-- Limestone strata -->
+                        <path class="earth-limestone" d="M0,7.5 C20,6.8 35,8.4 55,7.6 C72,7 86,8.2 100,7.4 L100,10 C84,10.8 70,9.6 52,10.4 C34,11 18,9.6 0,10.4 Z M0,17.6 C18,16.8 40,18.6 60,17.4 C78,16.6 90,17.8 100,17.2 L100,19.8 C88,20.6 74,19.2 58,20.2 C38,21.2 20,19.4 0,20.4 Z M0,28.4 C22,27.4 44,29.4 64,28 C80,27.2 92,28.6 100,28.2 L100,30.6 C90,31.2 78,30 62,31 C42,32 22,30 0,31 Z M0,39.6 C24,38.6 48,40.6 70,39.2 C84,38.6 94,39.6 100,39.4 L100,41.6 C92,42.2 80,41.2 66,42 C44,43 22,41 0,42 Z"/>
+                        <path class="earth-seam" d="M0,13.2 C25,12.6 50,14 75,13 C88,12.6 95,13.2 100,13 L100,13.8 C94,14 86,13.4 74,13.8 C50,14.8 26,13.4 0,14 Z M0,24 C30,23.2 56,24.8 80,23.8 C90,23.4 96,24 100,23.8 L100,24.6 C94,24.8 88,24.2 78,24.6 C54,25.6 28,24 0,24.8 Z M0,35 C20,34.4 46,35.8 70,34.8 C86,34.2 95,35 100,34.8 L100,35.6 C94,35.8 84,35.2 68,35.6 C44,36.6 20,35.2 0,35.8 Z"/>
+                        <path class="earth-stones" d="M8,4.6 a1.6,0.9 0 1,0 3.2,0 a1.6,0.9 0 1,0 -3.2,0 Z M27,12 a1.2,0.7 0 1,0 2.4,0 a1.2,0.7 0 1,0 -2.4,0 Z M66,4.2 a2,1 0 1,0 4,0 a2,1 0 1,0 -4,0 Z M84,12.4 a1.4,0.8 0 1,0 2.8,0 a1.4,0.8 0 1,0 -2.8,0 Z M44,22.4 a1.8,0.9 0 1,0 3.6,0 a1.8,0.9 0 1,0 -3.6,0 Z M18,23 a1.1,0.6 0 1,0 2.2,0 a1.1,0.6 0 1,0 -2.2,0 Z M74,22.6 a1.3,0.7 0 1,0 2.6,0 a1.3,0.7 0 1,0 -2.6,0 Z M34,33.4 a1.5,0.8 0 1,0 3,0 a1.5,0.8 0 1,0 -3,0 Z M58,33 a1.1,0.6 0 1,0 2.2,0 a1.1,0.6 0 1,0 -2.2,0 Z M48,44.6 a1.4,0.7 0 1,0 2.8,0 a1.4,0.7 0 1,0 -2.8,0 Z"/>
+                        <rect class="earth-topsoil" width="100" height="2.6"/>
+                        <circle id="earth-sun-glow" cx="50" cy="40" r="20" fill="url(#earth-sun-glow)" opacity="0"/>
+                    </g>
+                    <path class="earth-rim" d="M0,0 A50,50 0 0,0 100,0"/>
+                    <line class="earth-surface" x1="0" y1="0.2" x2="100" y2="0.2"/>
+                </svg>
             </div>
         </div>
         

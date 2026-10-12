@@ -6,29 +6,14 @@ import { point, booleanPointInPolygon } from 'https://cdn.jsdelivr.net/npm/@turf
 import { state, DAY_BUTTONS, SPEED_BUTTONS } from './config.js';
 import { calcSunTimes, specialDayStatus, addBiurChametzTime } from './astronomy.js';
 import { positionClockNumbers, setClockHand, positionMoon, placeSunTimes } from './clock.js';
-import { setDigitalTimes, setDate, setAtmosphere, updateResetButton } from './ui.js';
+import { setDigitalTimes, setDate, updateResetButton } from './ui.js';
 import { getSpecialDayStatus } from './hebrew.js';
 import { initCalendar } from './calendar.js';
-import { 
-  generateTerrain, 
-  generateVegetation, 
-  initStars,
-  forceCloudUpdate,
-  updateSceneVisuals,
-  initWeatherEffects,
-  updateVegetationSeason,
-  updatePersonClothing,
-  initBirds,
-  startPeriodicCleanup,
-  stopPeriodicCleanup,
-  getTimeAccelerationFactor,
-  cancelPendingCloudSpawns,
-  cleanupClouds
-} from './scene.js';
-import { fetchWeather, weatherState } from './weather.js';
-import { initLocation, locationState, getTimezoneForLocation } from './location.js';
+import { initSky, updateSky, invalidateSkyLayout } from './sky.js';
+import { initMazalos, updateMazalos, animateMazalModeChange } from './mazalos.js';
+import { generateLandscape, updateLandscape, updatePersonClothing } from './landscape.js';
+import { initLocation } from './location.js';
 import { getKidushLevanaState } from './kidushLevana.js';
-import { renderZodiacs, updateZodiacPositions } from './zodiac.js';
 
 // ============================================================================
 // Israel Detection (GeoJSON)
@@ -67,48 +52,20 @@ async function loadGeoJSON() {
   }
 }
 
+// Called twice per slow update; only the location changes the answer.
+let inIsraelCache = { lat: null, lon: null, geoJSON: null, result: false };
+
 function inIsrael(lat, lon) {
   if (!state.israelGeoJSON) return false;
+  const cache = inIsraelCache;
+  if (cache.lat === lat && cache.lon === lon && cache.geoJSON === state.israelGeoJSON) {
+    return cache.result;
+  }
   const pt = point([lon, lat]);
   const polygon = state.israelGeoJSON.features[0];
-  return booleanPointInPolygon(pt, polygon);
-}
-
-// ============================================================================
-// Weather Update System (Non-disruptive)
-// ============================================================================
-
-let weatherUpdateInterval = null;
-
-/**
- * Silently update weather without disrupting UI state
- */
-async function silentWeatherUpdate() {
-  try {
-    await fetchWeather();
-    
-    // Update vegetation season if weather changed significantly
-    updateVegetationSeason();
-    
-    // Update person clothing
-    updatePersonClothing();
-  } catch (err) {
-    console.warn('Silent weather update failed:', err);
-  }
-}
-
-/**
- * Start the weather update interval (every 10 minutes)
- */
-function startWeatherUpdates() {
-  // Clear any existing interval
-  if (weatherUpdateInterval) {
-    clearInterval(weatherUpdateInterval);
-  }
-  
-  // Update every 10 minutes (600000ms)
-  weatherUpdateInterval = setInterval(silentWeatherUpdate, 600000);
-  
+  const result = booleanPointInPolygon(pt, polygon);
+  inIsraelCache = { lat, lon, geoJSON: state.israelGeoJSON, result };
+  return result;
 }
 
 // ============================================================================
@@ -136,19 +93,9 @@ function getLocation() {
   const startClockLoop = () => {
     // Start clock immediately
     updateClock();
-    // Update every 20ms (50 FPS) for smoother animation
-    // Previous value was 100ms (10 FPS)
+    // Update every 50ms (20 FPS)
     state.clockIntervalId = setInterval(updateClock, 50);
-    startWeatherUpdates();
-
-    // Fetch weather in background, then update clouds
-    fetchWeather().then(() => {
-      forceCloudUpdate();
-      updateVegetationSeason();
-      updatePersonClothing();
-    }).catch(err => {
-      console.warn('Initial weather fetch failed:', err);
-    });
+    updatePersonClothing();
   };
 
   // Render immediately with the last known location while we wait for a fresh
@@ -183,6 +130,8 @@ function getLocation() {
     if (!state.clockIntervalId) {
       startClockLoop();
     }
+    // The hemisphere decides which way the sky view faces
+    invalidateSkyLayout();
   };
 
   const showError = (error) => {
@@ -255,18 +204,13 @@ function setupDayButtons() {
   const handleDayButtonClick = (change) => {
     changeDay(change);
     
-    // Clear existing debounce timer
-    if (dayButtonDebounceTimer) {
-      clearTimeout(dayButtonDebounceTimer);
-      // Cancel pending cloud spawns on rapid navigation
-      cancelPendingCloudSpawns();
-    }
-    
     // Debounce the heavy work - wait 80ms of no clicks before full update
+    clearTimeout(dayButtonDebounceTimer);
     dayButtonDebounceTimer = setTimeout(() => {
       dayButtonDebounceTimer = null;
       document.getElementById("sun-times").innerHTML = '';
       updateClock();
+      updatePersonClothing();
     }, 80);
   };
   
@@ -368,18 +312,20 @@ function setupTerrainToggle() {
   const terrainBtn = document.getElementById('btn-terrain');
   if (!terrainBtn) return;
 
-  // Compass mode now also drives zodiac visibility — one toggle, two layers.
+  // Compass mode also moves the mazalos from the clock ring out into the sky.
   const savedMode = localStorage.getItem('compassMode');
   if (savedMode === 'true') {
     document.body.classList.add('compass-mode');
     terrainBtn.classList.add('active');
-    updateZodiacPositions(state.date, state.observer, { force: true });
+    invalidateSkyLayout();
   }
 
   terrainBtn.addEventListener('click', () => {
     const isActive = document.body.classList.toggle('compass-mode');
     terrainBtn.classList.toggle('active', isActive);
-    updateZodiacPositions(state.date, state.observer, { force: true });
+    invalidateSkyLayout();
+    animateMazalModeChange();
+    if (state.latitude !== null) updateClock();
     localStorage.setItem('compassMode', isActive);
   });
 }
@@ -508,9 +454,10 @@ function updateClock() {
   setDigitalTimes();
   updateKidushLevana();
 
-  // Handle Atmosphere & Scene
-  const elevation = setAtmosphere();
-  updateSceneVisuals(elevation);
+  // Sky, landscape lighting and the mazalos
+  const sky = updateSky();
+  updateLandscape(sky);
+  updateMazalos(sky);
 
   positionMoon();
 
@@ -530,7 +477,6 @@ function updateClock() {
     addBiurChametzTime();
 
     placeSunTimes();
-    updateZodiacPositions(state.date, state.observer);
     lastSlowUpdate = now;
   }
 
@@ -544,50 +490,6 @@ function updateClock() {
     if (overlay) overlay.style.display = 'none';
   }
 }
-
-// ============================================================================
-// Zodiac diagnostics
-//
-// Run window.zodiacDebug() in the browser console to see the altitude /
-// azimuth / hour-angle the math currently produces for each zodiac at
-// state.date. The "highest altitude" row should be the zodiac the sun is
-// currently in (sidereal/IAU), since that constellation crosses the meridian
-// alongside the sun. Use this to diagnose any apparent placement off-by-one.
-// ============================================================================
-
-import('./zodiac.js').then(({ ZODIAC_DATA }) => import('./astronomy.js').then(({ Astronomy }) => {
-  window.zodiacDebug = function zodiacDebug() {
-    if (!state.observer || !state.date) {
-      console.warn('zodiacDebug: observer / date not yet ready');
-      return;
-    }
-    const lstHours = Astronomy.SiderealTime(state.date) + state.observer.longitude / 15;
-    const rows = ZODIAC_DATA.map(sign => {
-      const horizon = Astronomy.Horizon(
-        state.date, state.observer,
-        sign.equatorial.ra, sign.equatorial.dec, 'normal'
-      );
-      let ha = (lstHours - sign.equatorial.ra) % 24;
-      if (ha > 12)  ha -= 24;
-      if (ha < -12) ha += 24;
-      return {
-        key: sign.key,
-        name: sign.name,
-        lambda_deg: sign.longitude,
-        ra_h: +sign.equatorial.ra.toFixed(3),
-        dec_deg: +sign.equatorial.dec.toFixed(2),
-        hourAngle_h: +ha.toFixed(3),
-        altitude_deg: +horizon.altitude.toFixed(2),
-        azimuth_deg: +horizon.azimuth.toFixed(2),
-      };
-    }).sort((a, b) => b.altitude_deg - a.altitude_deg);
-    console.log(
-      `zodiacDebug @ ${state.date.toISOString()} | observer (${state.observer.latitude.toFixed(2)}, ${state.observer.longitude.toFixed(2)}) | LST = ${(((lstHours % 24) + 24) % 24).toFixed(3)}h`
-    );
-    console.table(rows);
-    return rows;
-  };
-}));
 
 // ============================================================================
 // Calendar Integration
@@ -649,15 +551,8 @@ function setupCalendarEvents() {
     // Set the day offset immediately for responsive feel
     state.daysAhead = diffDays;
     
-    // Clear existing debounce timer
-    if (calendarDebounceTimer) {
-      clearTimeout(calendarDebounceTimer);
-      // Cancel pending cloud spawns on rapid navigation to prevent memory buildup
-      cancelPendingCloudSpawns();
-    }
-    
     // Debounce the heavy work - wait 100ms of no clicks before full update
-    // This prevents memory accumulation during rapid clicking
+    clearTimeout(calendarDebounceTimer);
     calendarDebounceTimer = setTimeout(() => {
       calendarDebounceTimer = null;
       
@@ -666,6 +561,7 @@ function setupCalendarEvents() {
       
       // Update the clock
       updateClock();
+      updatePersonClothing();
       updateResetButton();
       updateSpeedIndicator();
     }, 100);
@@ -798,14 +694,11 @@ function setupLocationChangeHandler() {
       
       // Restart clock interval if it was stopped
       if (!state.clockIntervalId) {
-        state.clockIntervalId = setInterval(updateClock, 1000);
+        state.clockIntervalId = setInterval(updateClock, 50);
       }
             
-      // Force cloud regeneration for new location
-      forceCloudUpdate();
-      
-      // Update season-dependent visuals
-      updateVegetationSeason();
+      // Hemisphere and season may have changed
+      invalidateSkyLayout();
       updatePersonClothing();
       
       // Now update clock
@@ -849,13 +742,10 @@ window.updateResetButtonNew = function() {
 
 async function init() {
   await loadGeoJSON();
-  generateTerrain();
-  generateVegetation();
-  initStars();
-  initWeatherEffects();
-  initBirds();
+  initSky();
+  generateLandscape();
+  initMazalos();
   positionClockNumbers();
-  renderZodiacs();
   setupDayButtons();
   setupSpeedButtons();
   setupToolbarToggle();
@@ -937,10 +827,18 @@ function logBootPerf() {
 
 // Event listeners
 window.addEventListener('load', init);
+
+// Resize events fire continuously while dragging or zooming; redraw once it settles.
+let resizeTimer = null;
 window.addEventListener('resize', () => {
-  positionClockNumbers();
-  updateZodiacPositions(state.date, state.observer, { force: true });
-  if (state.latitude !== null) {
-    updateClock();
-  }
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    positionClockNumbers();
+    generateLandscape();
+    invalidateSkyLayout();
+    if (state.latitude !== null) {
+      document.getElementById('sun-times').innerHTML = '';
+      updateClock();
+    }
+  }, 150);
 });
