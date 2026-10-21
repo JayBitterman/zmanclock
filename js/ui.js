@@ -1,4 +1,4 @@
-import { state, activeTimezone, getDateFormatter } from './config.js';
+import { state, activeTimezone, getDateFormatter, CHELEK_MS } from './config.js';
 import { calculateSeasonalTime } from './astronomy.js';
 import { 
   getHebrewDateString, 
@@ -14,14 +14,21 @@ const CLOCK_TIME = { hour: 'numeric', minute: '2-digit', second: '2-digit', hour
 const WEEKDAY_SHORT = { weekday: 'short' };
 const DAY_PARTS = { year: 'numeric', month: 'numeric', day: 'numeric' };
 
+/** Set an element's text, touching the DOM only when it changed. */
+function setText(el, text) {
+  if (el.textContent !== text) el.textContent = text;
+}
+
 /**
  * Sets the digital times (standard and seasonal) displayed on the clock
  */
 export function setDigitalTimes() {
   const digitalTimeHolder = document.getElementById("digital-time");
-  const sDigitalTimeHolder = document.getElementById("seasonal-time");
-  
-  if (!digitalTimeHolder || !sDigitalTimeHolder) return;
+  const sClockHolder = document.getElementById("seasonal-clock");
+  const sChalakimHolder = document.getElementById("seasonal-chalakim");
+  const sPeriodHolder = document.getElementById("seasonal-period");
+
+  if (!digitalTimeHolder || !sClockHolder || !sChalakimHolder || !sPeriodHolder) return;
 
   const timeString = getDateFormatter(activeTimezone(), CLOCK_TIME).format(state.date);
   
@@ -31,19 +38,23 @@ export function setDigitalTimes() {
   }
     
   // Seasonal time
-  const { isDay, totalSeasonalMinutes } = calculateSeasonalTime();
-  
+  const { isDay, totalSeasonalMinutes, seasonalHourLength } = calculateSeasonalTime();
+
   const seasonalHour = Math.floor(totalSeasonalMinutes / 60);
   const seasonalMinute = Math.floor(totalSeasonalMinutes % 60);
   const fractionalMinute = totalSeasonalMinutes % 1;
   const seasonalSecond = Math.floor(fractionalMinute * 60);
 
-  const stimeString = `${seasonalHour}:${seasonalMinute.toString().padStart(2, '0')}:${seasonalSecond.toString().padStart(2, '0')} ${isDay ? 'ביום' : 'בלילה'}`;
-  
-  // OPTIMIZATION: Only update DOM if text changed
-  if (sDigitalTimeHolder.textContent !== stimeString) {
-    sDigitalTimeHolder.textContent = stimeString;
-  }
+  // Chalakim are fixed 3⅓-second units, not seasonal: count the real time
+  // elapsed since this seasonal minute began. A seasonal minute isn't 60 real
+  // seconds, so the count runs past 17 on long days and stops short on short ones.
+  const msIntoSeasonalMinute = fractionalMinute * seasonalHourLength / 60;
+  const chalakim = Math.floor(msIntoSeasonalMinute / CHELEK_MS);
+
+  setText(sClockHolder, `${seasonalHour}:${seasonalMinute.toString().padStart(2, '0')}:${seasonalSecond.toString().padStart(2, '0')}`);
+  // The span is dir="rtl", so this reads in Hebrew order beside the LTR clock
+  setText(sChalakimHolder, `(${chalakim} ${chalakim === 1 ? 'חלק' : 'חלקים'})`);
+  setText(sPeriodHolder, isDay ? 'ביום' : 'בלילה');
 }
 
 // ui.js

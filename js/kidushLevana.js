@@ -11,8 +11,7 @@
 // saving), so the moment is 12:10:23.333 − 2:20:56 → 09:49:27.333 UTC.
 // ============================================================================
 
-// 1 chelek = 1/1080 hour = 3600/1080 sec = 10/3 sec
-const CHELEK_MS = 10000 / 3;
+import { CHELEK_MS } from './config.js';
 
 // Average month: 29.5 days + 793 chalakim
 export const MONTH_MS = 29.5 * 86400000 + 793 * CHELEK_MS;

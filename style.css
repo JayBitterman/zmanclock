@@ -809,6 +809,13 @@ body:not(.facing-south) .gc-north-near { display: none; }
   font-family: var(--font-hebrew);
   font-weight: 400;
   opacity: 0.9;
+  font-variant-numeric: tabular-nums; /* seconds and chalakim don't jitter */
+  white-space: nowrap;
+}
+
+/* Chalakim parenthetical beside the seasonal seconds — secondary, so smaller */
+#seasonal-chalakim {
+  font-size: 0.8em;
 }
 
 #day-of-week {
@@ -817,6 +824,21 @@ body:not(.facing-south) .gc-north-near { display: none; }
   font-family: var(--font-hebrew);
   font-weight: 500;
   text-shadow: var(--text-shadow);
+}
+
+/* Portrait and near-square screens: text scales with vmin = width, so the
+   seasonal time + day name would run into the Hebrew date column. The day
+   name drops to its own line instead. */
+@media (max-aspect-ratio: 5/4) {
+  #seasonal-row {
+    flex-wrap: wrap;
+    row-gap: 0.2vmin;
+  }
+
+  #day-of-week {
+    flex-basis: 100%;
+    text-align: right;
+  }
 }
 
 /* Kiddush Levana row — three zones aligned along a single right-anchored

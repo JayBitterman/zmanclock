@@ -51,6 +51,10 @@ export const DUB_PARSHA = {
 export const RISING = 1;
 export const SETTING = -1;
 
+// 1 chelek = 1/1080 hour = 3600/1080 sec = 10/3 sec. A fixed unit: chalakim
+// are never stretched to seasonal hours.
+export const CHELEK_MS = 10000 / 3;
+
 // ============================================================================
 // Shared State - Mutable application state
 // ============================================================================
